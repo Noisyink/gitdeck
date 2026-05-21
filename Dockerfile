@@ -24,13 +24,15 @@ ENV NODE_ENV=production \
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/index.html ./index.html
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN mkdir -p /home/node/.gitdeck \
+RUN chmod +x ./docker-entrypoint.sh \
+ && mkdir -p /home/node/.gitdeck \
  && chown -R node:node /home/node/.gitdeck /app
 
-USER node
+USER root
 
 EXPOSE 8765
 VOLUME ["/home/node/.gitdeck"]
 
-CMD ["node", "dist/server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
