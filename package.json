@@ -1,6 +1,6 @@
 {
   "name": "gitdeck",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "description": "Local multi-account dashboard for GitHub and Forgejo-compatible forges (Codeberg, self-hosted).",
