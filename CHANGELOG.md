@@ -1,3 +1,24 @@
+## [1.0.4](https://github.com/debba/gh-dashboard/compare/v1.0.2...v1.0.4) (2026-05-21)
+
+
+### Bug Fixes
+
+* **accounts:** reload dashboard data when switching account ([8b0085b](https://github.com/debba/gh-dashboard/commit/8b0085ba4ca9d7ef9da0dfa789cb66129eed7761))
+* **auth:** provider choice on the first-time sign-in screen ([5b29b58](https://github.com/debba/gh-dashboard/commit/5b29b58c1b197f1d4ef7e0fdd6c53a9b09c74e86)), closes [#cli](https://github.com/debba/gh-dashboard/issues/cli)
+* **sidebar:** keep filter sections open after deselecting the last item ([4375d24](https://github.com/debba/gh-dashboard/commit/4375d242db2d959291824c8cd5954c9e70a721bd))
+
+
+### Features
+
+* **accounts:** add /api/accounts endpoints and TopBar switcher ([0a3e5e9](https://github.com/debba/gh-dashboard/commit/0a3e5e97d194d1822d1c25b85c35514f18919aa1))
+* **accounts:** add and remove GitHub accounts from the switcher ([abe591e](https://github.com/debba/gh-dashboard/commit/abe591e09e34f27461357d2010a7d9ce225b7a3f))
+* **accounts:** gate the kanban tab behind provider capabilities ([9a5b1c1](https://github.com/debba/gh-dashboard/commit/9a5b1c199accaad120a89451c5ee6934bd3dd84c))
+* **auth:** redesign auth UI and update app title ([57fb259](https://github.com/debba/gh-dashboard/commit/57fb259aab2a6d3d651656cc791381f49d13b9ac))
+* **forgejo:** provider skeleton and token-based account onboarding ([0f7157c](https://github.com/debba/gh-dashboard/commit/0f7157c4e8c1358569378a037b72b125daf60ed0))
+* **forgejo:** route domain ops through the provider interface ([8557259](https://github.com/debba/gh-dashboard/commit/8557259bb8d57dea81f1d5dffc07110c67facab5))
+* **labels:** add Primer-style label CSS vars and usage ([c7e0f3c](https://github.com/debba/gh-dashboard/commit/c7e0f3c82c2771e815217c3982c339fb48b2fce7))
+* **sidebar:** clear filter selections by hovering its count badge ([f0a291a](https://github.com/debba/gh-dashboard/commit/f0a291a626f7841524cfdaba211971581a481a49)), closes [#8](https://github.com/debba/gh-dashboard/issues/8)
+
 ## [1.0.2](https://github.com/debba/gh-dashboard/compare/v1.0.1...v1.0.2) (2026-05-09)
 
 
