@@ -559,6 +559,7 @@ export function App() {
   const stalePrCount = pullRequests.filter((pr) => Date.now() - new Date(pr.updatedAt).getTime() > 14 * 86_400_000).length;
   const averageHealth = repoInsights.length ? Math.round(repoInsights.reduce((sum, insight) => sum + insight.healthScore, 0) / repoInsights.length) : 0;
   const totalAlerts = repoInsights.reduce((sum, insight) => sum + insight.alerts.length, 0);
+  const totalSecurityAlerts = repoInsights.reduce((sum, insight) => sum + insight.securityAlertsCount, 0);
   const reposByName = useMemo(() => new Map(repos.map((repo) => [repo.nameWithOwner, repo])), [repos]);
   const repoModal = useMemo(
     () => (routeRepoName && !routeMetricKind ? reposByName.get(routeRepoName) ?? null : null),
@@ -595,6 +596,7 @@ export function App() {
     t("summary.prs", { count: pullRequests.length }),
     t("summary.repos", { count: repos.length }),
     t("summary.orgs", { count: owners.length }),
+    ...(totalSecurityAlerts > 0 ? [t("summary.securityAlerts", { count: totalSecurityAlerts })] : []),
     ...(loading ? [t("summary.loading")] : []),
   ].join(" · ");
   const lastUpdated = fetchedAt ? t("common.updatedAt", { time: new Date(fetchedAt).toLocaleTimeString() }) : "";

@@ -70,6 +70,7 @@ export const en = {
   "summary.prs": "{count} PRs",
   "summary.repos": "{count} repos",
   "summary.orgs": "{count} orgs",
+  "summary.securityAlerts": "{count} security alerts",
   "summary.loading": "loading...",
   "stats.openIssues": "Open issues",
   "stats.matchingFilters": "matching filters",

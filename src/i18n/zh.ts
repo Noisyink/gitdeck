@@ -72,6 +72,7 @@ export const zh: Record<keyof typeof en, string> = {
   "summary.prs": "{count} 个 PR",
   "summary.repos": "{count} 个仓库",
   "summary.orgs": "{count} 个组织",
+  "summary.securityAlerts": "{count} 个安全告警",
   "summary.loading": "加载中...",
   "stats.openIssues": "开放 Issues",
   "stats.matchingFilters": "匹配筛选",

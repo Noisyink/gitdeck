@@ -72,6 +72,7 @@ export const es: Record<keyof typeof en, string> = {
   "summary.prs": "{count} PR",
   "summary.repos": "{count} repos",
   "summary.orgs": "{count} orgs",
+  "summary.securityAlerts": "{count} alertas de seguridad",
   "summary.loading": "cargando...",
   "stats.openIssues": "Issues abiertas",
   "stats.matchingFilters": "coinciden con filtros",
