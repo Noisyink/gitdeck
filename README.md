@@ -198,6 +198,8 @@ Then open <http://127.0.0.1:8765>.
 
 A multi-stage `Dockerfile` and a `docker-compose.yml` are provided. The image builds the server + SPA bundle and runs as a non-root user; tokens and snapshots are persisted to a named volume mounted at `/home/node/.gitdeck`.
 
+If you already have an older compose file, make sure the persistent volume is mounted at `/home/node/.gitdeck` and not the legacy `/home/node/.gh-issues-dashboard` path, otherwise the login state will not survive restarts.
+
 With Docker Compose (recommended):
 
 ```bash

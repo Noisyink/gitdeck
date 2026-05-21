@@ -1065,9 +1065,11 @@ const APP_ROUTES = new Set([
   "/issues",
   "/pull-requests",
   "/insights",
+  "/alerts",
   "/ci",
   "/daily",
   "/board",
+  "/alert",
 ]);
 
 async function sendClientIndex(res: ServerResponse): Promise<void> {
@@ -1176,6 +1178,11 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (url.startsWith("/api/notifications")) {
     return handleNotifications(req, res, new URL(url, "http://localhost"));
+  }
+  const lastSlash = pathname.lastIndexOf("/");
+  const fileName = lastSlash >= 0 ? pathname.slice(lastSlash + 1) : pathname;
+  if (!fileName.includes(".")) {
+    return sendClientIndex(res);
   }
   send(res, 404, "not found", "text/plain; charset=utf-8");
 }

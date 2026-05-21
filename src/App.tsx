@@ -94,6 +94,7 @@ const DETAIL_TABS = new Set<DetailTab>(["overview", "actions", "pull-requests", 
 const METRIC_KINDS = new Set<MetricKind>(["stars", "forks"]);
 
 function tabFromPath(pathname: string): Tab {
+  if (pathname === "/alert") return "alerts";
   return ROUTE_TABS.get(pathname) ?? "repos";
 }
 
@@ -438,6 +439,10 @@ export function App() {
   useEffect(() => {
     if (location.pathname === "/" || location.pathname === "/index.html") {
       navigate(`${TAB_ROUTES.repos}${location.search}`, { replace: true });
+      return;
+    }
+    if (location.pathname === "/alert") {
+      navigate(`${TAB_ROUTES.alerts}${location.search}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
