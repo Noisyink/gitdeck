@@ -62,21 +62,40 @@ const issuesDay2: GhIssue[] = [
 
 describe("daily digest utilities", () => {
   it("builds snapshot records from repositories and issues", () => {
-    const record = buildDailyDigestRecord(reposDay1, issuesDay1, new Date("2026-04-20T12:00:00Z").getTime());
+    const record = buildDailyDigestRecord(
+      reposDay1,
+      issuesDay1,
+      new Date("2026-04-20T12:00:00Z").getTime(),
+      new Map([["acme/app", { securityAlertsCount: 2, securityAlertsUnavailable: false }]]),
+    );
     expect(record.date).toBe("2026-04-20");
     expect(record.totalStars).toBe(10);
     expect(record.issueCount).toBe(1);
+    expect(record.securityAlertsCount).toBe(2);
+    expect(record.securityReposCount).toBe(1);
     expect(record.repos[0].issueCount).toBe(1);
   });
 
   it("computes daily deltas and highlights", () => {
-    const day1 = buildDailyDigestRecord(reposDay1, issuesDay1, new Date("2026-04-20T12:00:00Z").getTime());
-    const day2 = buildDailyDigestRecord(reposDay2, issuesDay2, new Date("2026-04-21T12:00:00Z").getTime());
+    const day1 = buildDailyDigestRecord(
+      reposDay1,
+      issuesDay1,
+      new Date("2026-04-20T12:00:00Z").getTime(),
+      new Map([["acme/app", { securityAlertsCount: 1, securityAlertsUnavailable: false }]]),
+    );
+    const day2 = buildDailyDigestRecord(
+      reposDay2,
+      issuesDay2,
+      new Date("2026-04-21T12:00:00Z").getTime(),
+      new Map([["acme/app", { securityAlertsCount: 3, securityAlertsUnavailable: false }]]),
+    );
     const entries = buildDailyDigestEntries([day1, day2]);
 
     expect(entries[0].date).toBe("2026-04-21");
     expect(entries[0].starsDelta).toBe(4);
     expect(entries[0].issueDelta).toBe(1);
+    expect(entries[0].securityAlertsCount).toBe(3);
+    expect(entries[0].repos[0].securityAlertsCount).toBe(3);
     expect(entries[0].repos[0].issueDelta).toBe(1);
     expect(entries[0].highlights.length).toBeGreaterThan(0);
   });

@@ -79,9 +79,16 @@ export function DailyDigestView({ digests, period, onPeriodChange }: DailyDigest
               <span>★ {digest.starsDelta >= 0 ? "+" : ""}{formatNumber(digest.starsDelta)}</span>
               <span>{t("digest.forksDelta", { value: `${digest.forksDelta >= 0 ? "+" : ""}${formatNumber(digest.forksDelta)}` })}</span>
               <span>{t("digest.issuesDelta", { value: `${digest.issueDelta >= 0 ? "+" : ""}${formatNumber(digest.issueDelta)}` })}</span>
+              <span>{t("digest.securityAlerts", { count: formatNumber(digest.securityAlertsCount) })}</span>
+              <span>{t("digest.securityRepos", { count: formatNumber(digest.securityReposCount) })}</span>
               <button type="button" className="digest-copy-btn" onClick={() => void copyDigest(digest)}>{t("digest.copyMarkdown")}</button>
             </div>
           </div>
+          {digest.securityAlertsUnavailable ? (
+            <div className="modal-info-banner">
+              {t("digest.securityUnavailable")}
+            </div>
+          ) : null}
           {digest.ai ? (
             <div className="digest-ai-block">
               <div className="digest-ai-head">
@@ -121,6 +128,7 @@ export function DailyDigestView({ digests, period, onPeriodChange }: DailyDigest
                 <span>★ {repo.starsDelta >= 0 ? "+" : ""}{formatNumber(repo.starsDelta)}</span>
                 <span>{t("digest.forksDelta", { value: `${repo.forksDelta >= 0 ? "+" : ""}${formatNumber(repo.forksDelta)}` })}</span>
                 <em>{t("digest.issuesDelta", { value: `${repo.issueDelta >= 0 ? "+" : ""}${formatNumber(repo.issueDelta)}` })}</em>
+                <em>{t("digest.securityAlerts", { count: formatNumber(repo.securityAlertsCount) })}</em>
               </div>
             ))}
           </div>

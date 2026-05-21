@@ -8,6 +8,7 @@ export type PaletteTab =
   | "prs"
   | "kanban"
   | "insights"
+  | "alerts"
   | "ci"
   | "digests";
 
@@ -39,6 +40,7 @@ const TAB_DEFS: { key: PaletteTab; label: string }[] = [
   { key: "issues", label: "Issues" },
   { key: "prs", label: "Pull Requests" },
   { key: "insights", label: "Insights" },
+  { key: "alerts", label: "Alerts" },
   { key: "ci", label: "CI" },
   { key: "digests", label: "Digest" },
   { key: "kanban", label: "Board" },

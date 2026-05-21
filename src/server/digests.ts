@@ -4,6 +4,7 @@ import type { DailyRepoDigest, GhIssue, GhRepo } from "../types/github";
 import { buildDailyDigestEntries, buildDailyDigestRecord, buildPeriodDigestEntries, type DailyDigestRecord, type DigestPeriod } from "../utils/digests";
 import { DATA_DIR, DIGESTS_PATH } from "./config";
 import { sendJsonCacheable } from "./http";
+import { fetchRepoSecuritySummary } from "./securityAlerts";
 import { maybeGenerateOpenAIDigest } from "./openaiDigest";
 
 const MAX_DIGEST_DAYS = 120;
@@ -34,7 +35,17 @@ async function saveDigests(): Promise<void> {
 
 export async function recordDailyDigest(repos: GhRepo[], issues: GhIssue[]): Promise<void> {
   const digests = await loadDigests();
-  const today = buildDailyDigestRecord(repos, issues);
+  const securityEntries = await Promise.all(
+    repos.map(async (repo) => {
+      try {
+        const summary = await fetchRepoSecuritySummary(repo.nameWithOwner);
+        return [repo.nameWithOwner, summary] as const;
+      } catch {
+        return [repo.nameWithOwner, { dependabotOpen: 0, codeScanningOpen: 0, totalOpen: 0, latestUpdatedAt: null, unavailable: true }] as const;
+      }
+    }),
+  );
+  const today = buildDailyDigestRecord(repos, issues, Date.now(), new Map(securityEntries.map(([repo, summary]) => [repo, summary])));
   const existing = digests.find((entry) => entry.date === today.date);
   if (existing) {
     Object.assign(existing, today);

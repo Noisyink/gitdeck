@@ -225,6 +225,14 @@ export interface RepoWorkflowRun {
   updated_at: string;
 }
 
+export interface RepoSecuritySummary {
+  dependabotOpen: number;
+  codeScanningOpen: number;
+  totalOpen: number;
+  latestUpdatedAt: string | null;
+  unavailable: boolean;
+}
+
 export interface RepoDetailsData {
   ok: true;
   meta: {
@@ -239,6 +247,7 @@ export interface RepoDetailsData {
   views: RepoTrafficViews | null;
   releases: RepoRelease[];
   workflows: RepoWorkflowRun[];
+  security: RepoSecuritySummary;
   digest?: DailyRepoDigest | null;
   errors?: Record<string, string | null>;
 }
@@ -275,6 +284,8 @@ export interface RepoInsight {
   viewsUniques: number;
   healthScore: number;
   healthLabel: "strong" | "watch" | "risky";
+  securityAlertsCount: number;
+  securityAlertsUnavailable: boolean;
   alerts: string[];
   opportunities: string[];
   correlations: string[];
@@ -294,10 +305,13 @@ export interface DailyRepoDigest {
   forks: number;
   issueCount: number;
   staleIssueCount: number;
+  securityAlertsCount: number;
+  securityAlertsUnavailable: boolean;
   starsDelta: number;
   forksDelta: number;
   issueDelta: number;
   staleIssueDelta: number;
+  securityAlertsDelta: number;
   highlights: string[];
   executiveSummary: string[];
   momentum: string[];
@@ -315,6 +329,9 @@ export interface DailyDigestEntry {
   repoCount: number;
   issueCount: number;
   staleIssueCount: number;
+  securityAlertsCount: number;
+  securityReposCount: number;
+  securityAlertsUnavailable: boolean;
   totalStars: number;
   totalForks: number;
   issueDelta: number;

@@ -12,6 +12,8 @@ export interface RepoInsightInput {
   totalDownloads?: number;
   recentDownloads?: number;
   latestReleasePublishedAt?: string | null;
+  securityAlertsCount?: number;
+  securityAlertsUnavailable?: boolean;
   now?: number;
 }
 
@@ -39,6 +41,8 @@ export function buildRepoInsight(input: RepoInsightInput): RepoInsight {
   const totalDownloads = input.totalDownloads ?? 0;
   const recentDownloads = input.recentDownloads ?? 0;
   const latestReleasePublishedAt = input.latestReleasePublishedAt ?? null;
+  const securityAlertsCount = input.securityAlertsCount ?? 0;
+  const securityAlertsUnavailable = input.securityAlertsUnavailable ?? false;
   const daysSinceRelease = latestReleasePublishedAt ? Math.floor((now - new Date(latestReleasePublishedAt).getTime()) / DAY_MS) : null;
 
   let healthScore = 78;
@@ -47,6 +51,7 @@ export function buildRepoInsight(input: RepoInsightInput): RepoInsight {
   if (daysSincePush > 14) healthScore -= Math.min(20, Math.floor((daysSincePush - 14) / 7) * 4);
   if (daysSinceRelease !== null && daysSinceRelease > 120 && viewsCount > 150) healthScore -= 12;
   if (latestReleasePublishedAt === null && viewsCount > 150) healthScore -= 10;
+  healthScore -= Math.min(18, securityAlertsCount * 3);
   if (daysSincePush <= 7) healthScore += 10;
   if ((starsDelta ?? 0) > 0) healthScore += Math.min(8, starsDelta ?? 0);
   if ((forksDelta ?? 0) > 0) healthScore += Math.min(4, forksDelta ?? 0);
@@ -58,6 +63,7 @@ export function buildRepoInsight(input: RepoInsightInput): RepoInsight {
   const opportunities: string[] = [];
   const correlations: string[] = [];
 
+  if (securityAlertsCount > 0) alerts.push(`${securityAlertsCount} open security alerts need attention.`);
   if (staleIssueCount >= 3) alerts.push(`${staleIssueCount} stale issues need attention.`);
   if (daysSincePush > 45 && repoIssues.length > 0) alerts.push(`No push for ${daysSincePush} days while issues remain open.`);
   if (viewsCount > 250 && (daysSinceRelease === null || daysSinceRelease > 120)) alerts.push("Traffic is active but the release cadence is cold.");
@@ -89,6 +95,8 @@ export function buildRepoInsight(input: RepoInsightInput): RepoInsight {
     viewsUniques,
     healthScore,
     healthLabel: healthScore >= 80 ? "strong" : healthScore >= 55 ? "watch" : "risky",
+    securityAlertsCount,
+    securityAlertsUnavailable,
     alerts,
     opportunities,
     correlations,

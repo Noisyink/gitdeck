@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { GhIssue, GhRepo, RepoInsight } from "../types/github";
 import { buildRepoInsight } from "../utils/insights";
+import { fetchRepoSecuritySummary } from "./securityAlerts";
 import { getIssuesCached, getReposCached } from "./dashboardData";
 import { ghApiJson, restApiPaginate } from "./githubClient";
 import { sendJsonCacheable } from "./http";
@@ -21,9 +22,10 @@ async function fetchReleases(repo: string) {
 }
 
 async function fetchInsightForRepo(repo: GhRepo, issues: GhIssue[]): Promise<RepoInsight> {
-  const [views, releases] = await Promise.all([
+  const [views, releases, security] = await Promise.all([
     ghApiJson(`/repos/${repo.nameWithOwner}/traffic/views`),
     fetchReleases(repo.nameWithOwner),
+    fetchRepoSecuritySummary(repo.nameWithOwner),
   ]);
   const releaseList = releases.ok ? releases.data : [];
   const totalDownloads = releaseList.reduce((sum, release) => (
@@ -48,6 +50,8 @@ async function fetchInsightForRepo(repo: GhRepo, issues: GhIssue[]): Promise<Rep
     totalDownloads,
     recentDownloads,
     latestReleasePublishedAt,
+    securityAlertsCount: security.totalOpen,
+    securityAlertsUnavailable: security.unavailable,
   });
 }
 

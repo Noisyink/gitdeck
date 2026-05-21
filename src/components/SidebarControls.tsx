@@ -6,7 +6,7 @@ import { formatNumber } from "../utils/format";
 import { ChevronIcon, CloseIcon, SearchIcon } from "./common/Icons";
 import { useI18n } from "../i18n/I18nProvider";
 
-type Tab = "inbox" | "issues" | "repos" | "kanban" | "insights" | "ci" | "digests" | "prs";
+type Tab = "inbox" | "issues" | "repos" | "kanban" | "insights" | "alerts" | "ci" | "digests" | "prs";
 
 export interface InboxSidebarState {
   mailbox: InboxMailbox;
