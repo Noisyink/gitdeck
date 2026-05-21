@@ -71,7 +71,7 @@ import { formatNumber } from "./utils/format";
 import { clearStatsCache, readStatsCache, writeStatsCache } from "./utils/statsCache";
 import { clearFiltersCache, hydrateFilters, readFiltersCache, writeFiltersCache } from "./utils/filtersCache";
 import { useI18n } from "./i18n/I18nProvider";
-import { useCapability } from "./contexts/AccountContext";
+import { useAccounts, useCapability } from "./contexts/AccountContext";
 
 type Tab = "inbox" | "repos" | "issues" | "prs" | "kanban" | "insights" | "ci" | "digests";
 type Theme = "dark" | "light" | "auto";
@@ -161,6 +161,8 @@ type AuthState = "checking" | "anonymous" | "authenticated";
 export function App() {
   const { t } = useI18n();
   const projectsEnabled = useCapability("projects");
+  const { active: activeAccount } = useAccounts();
+  const activeAccountId = activeAccount?.id ?? null;
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -218,6 +220,7 @@ export function App() {
   const [prPageSize, setPrPageSize] = useState(Number(localStorage.getItem("gh-dash.prsPageSize")) || 20);
   const [repoPageSize, setRepoPageSize] = useState(Number(localStorage.getItem("gh-dash.reposPageSize")) || 20);
   const abortRef = useRef<AbortController | null>(null);
+  const initialLoadRef = useRef(false);
 
   const loadData = useCallback((fresh = false) => {
     abortRef.current?.abort();
@@ -317,8 +320,27 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (authState === "authenticated") loadData();
-  }, [authState, loadData]);
+    if (authState !== "authenticated") {
+      initialLoadRef.current = false;
+      return;
+    }
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      loadData();
+      return;
+    }
+    setIssues([]);
+    setPullRequests([]);
+    setRepos([]);
+    setOwners([]);
+    setRepoInsights([]);
+    setDailyDigests([]);
+    setCiHealth([]);
+    setNotifications([]);
+    setFetchedAt("");
+    clearStatsCache();
+    loadData(true);
+  }, [authState, activeAccountId, loadData]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -350,7 +372,7 @@ export function App() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [tab, authState]);
+  }, [tab, authState, activeAccountId]);
 
   useEffect(() => {
     if (authState !== "authenticated") return;
@@ -366,7 +388,7 @@ export function App() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [tab, authState]);
+  }, [tab, authState, activeAccountId]);
 
   useEffect(() => {
     if (authState !== "authenticated") return;
@@ -383,7 +405,7 @@ export function App() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [tab, authState, digestPeriod]);
+  }, [tab, authState, digestPeriod, activeAccountId]);
 
   useEffect(() => {
     localStorage.setItem("gh-dash.digestPeriod", digestPeriod);
@@ -470,8 +492,8 @@ export function App() {
 
   useEffect(() => {
     if (authState !== "authenticated") return;
-    void refreshNotifications();
-  }, [authState, refreshNotifications]);
+    void refreshNotifications(true);
+  }, [authState, activeAccountId, refreshNotifications]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !pollInterval) return;
