@@ -45,6 +45,7 @@ import {
   markAllRead,
   markThreadRead,
 } from "./server/notifications";
+import { fetchRepoSecuritySummary } from "./server/securityAlerts";
 import { handleRepoInsights } from "./server/repoInsights";
 import { getCIHealthCached, invalidateCIHealthCache } from "./server/ciHealth";
 
@@ -722,7 +723,7 @@ async function handleRepoDetails(res: ServerResponse, u: URL): Promise<void> {
     return restApiPaginate(`/repos/${repo}/releases?per_page=100`);
   }
 
-  const [meta, languages, contributors, commits, workflows, views, releases, repoDigest] = await Promise.all([
+  const [meta, languages, contributors, commits, workflows, views, releases, repoDigest, security] = await Promise.all([
     ghApiJson(`/repos/${repo}`),
     ghApiJson(`/repos/${repo}/languages`),
     fetchContributors(),
@@ -731,6 +732,7 @@ async function handleRepoDetails(res: ServerResponse, u: URL): Promise<void> {
     ghApiJson(`/repos/${repo}/traffic/views`),
     fetchReleases(),
     getLatestRepoDigest(repo),
+    fetchRepoSecuritySummary(repo),
   ]);
 
   const normalizedReleases = releases.ok
@@ -767,6 +769,7 @@ async function handleRepoDetails(res: ServerResponse, u: URL): Promise<void> {
     contributors: contributors.ok ? contributors.data : [],
     views: views.ok ? views.data : null,
     releases: normalizedReleases,
+    security,
     digest: repoDigest,
     commits: commits.ok ? commits.data : [],
     workflows: workflows.ok

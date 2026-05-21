@@ -61,6 +61,8 @@ describe("insight utilities", () => {
       totalDownloads: 900,
       recentDownloads: 120,
       latestReleasePublishedAt: "2026-04-18T10:00:00Z",
+      securityAlertsCount: 0,
+      securityAlertsUnavailable: false,
       now: new Date("2026-04-23T10:00:00Z").getTime(),
     });
 
@@ -76,11 +78,14 @@ describe("insight utilities", () => {
       viewsCount: 280,
       releaseCount: 0,
       totalDownloads: 20,
+      securityAlertsCount: 4,
+      securityAlertsUnavailable: false,
       now: new Date("2026-04-23T10:00:00Z").getTime(),
     });
 
     expect(risky.healthLabel).toBe("risky");
     expect(risky.alerts.some((alert) => /No push/i.test(alert))).toBe(true);
+    expect(risky.alerts.some((alert) => /security alerts/i.test(alert))).toBe(true);
     expect(risky.opportunities.some((item) => /without any formal releases/i.test(item))).toBe(true);
   });
 });

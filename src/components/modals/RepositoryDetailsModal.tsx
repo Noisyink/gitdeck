@@ -250,6 +250,7 @@ export function RepositoryDetailsModal({ repo, issues, pullRequests, activeTab, 
   const clones = trafficDetails?.clones ?? null;
   const releases = details?.releases ?? [];
   const workflows = details?.workflows ?? [];
+  const security = details?.security ?? null;
   const totalReleaseDownloads = releases.reduce((sum, release) => sum + release.totalDownloads, 0);
   const repoDigest = details?.digest ?? null;
   const releasesPageSize = 10;
@@ -432,6 +433,43 @@ export function RepositoryDetailsModal({ repo, issues, pullRequests, activeTab, 
                 onPageSizeChange={() => {}}
                 showPageSize={false}
               />
+            ) : null}
+          </section> : null}
+
+          {activeTab === "overview" ? <section>
+            <div className="modal-section-title section-title-with-count">
+              <span>Security and quality</span>
+              <strong>{security ? formatNumber(security.totalOpen) : "..."}</strong>
+            </div>
+            <div className="repo-detail-traffic-grid">
+              <div className="repo-detail-traffic-card">
+                <span className="repo-detail-traffic-label">Dependabot alerts</span>
+                <strong>{security ? formatNumber(security.dependabotOpen) : "..."}</strong>
+                <em>
+                  {security
+                    ? (security.dependabotOpen ? "Open dependency advisories." : "No open dependency alerts.")
+                    : "Loading security data..."}
+                </em>
+              </div>
+              <div className="repo-detail-traffic-card">
+                <span className="repo-detail-traffic-label">Code scanning alerts</span>
+                <strong>{security ? formatNumber(security.codeScanningOpen) : "..."}</strong>
+                <em>
+                  {security
+                    ? (security.codeScanningOpen ? "Open code scanning findings." : "No open code scanning alerts.")
+                    : "Loading security data..."}
+                </em>
+              </div>
+            </div>
+            {security?.latestUpdatedAt ? (
+              <div className="modal-info-banner">
+                Last security update {formatRelativeTime(security.latestUpdatedAt)}
+              </div>
+            ) : null}
+            {security?.unavailable ? (
+              <div className="modal-info-banner">
+                Security alerts are not fully available with the current permissions or repository settings.
+              </div>
             ) : null}
           </section> : null}
 
