@@ -1,6 +1,7 @@
-ARG NODE_VERSION=22-alpine
+ARG NODE_BUILDER_VERSION=22-slim
+ARG NODE_RUNTIME_VERSION=22-alpine
 
-FROM node:${NODE_VERSION} AS builder
+FROM node:${NODE_BUILDER_VERSION} AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -14,7 +15,7 @@ COPY public ./public
 RUN npm run build
 
 
-FROM node:${NODE_VERSION} AS runtime
+FROM node:${NODE_RUNTIME_VERSION} AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production \
