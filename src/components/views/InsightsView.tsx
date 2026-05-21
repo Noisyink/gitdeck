@@ -6,12 +6,20 @@ interface InsightsViewProps {
   insights: RepoInsight[];
   reposByName: Map<string, GhRepo>;
   onRepoClick: (repo: GhRepo) => void;
+  emptyTitleKey?: "insights.emptyTitle" | "alerts.emptyTitle";
+  emptyTextKey?: "insights.emptyText" | "alerts.emptyText";
 }
 
-export function InsightsView({ insights, reposByName, onRepoClick }: InsightsViewProps) {
+export function InsightsView({
+  insights,
+  reposByName,
+  onRepoClick,
+  emptyTitleKey = "insights.emptyTitle",
+  emptyTextKey = "insights.emptyText",
+}: InsightsViewProps) {
   const { language, t } = useI18n();
   if (!insights.length) {
-    return <div className="empty"><div className="big">{t("insights.emptyTitle")}</div><div>{t("insights.emptyText")}</div></div>;
+    return <div className="empty"><div className="big">{t(emptyTitleKey)}</div><div>{t(emptyTextKey)}</div></div>;
   }
 
   return (
@@ -33,8 +41,15 @@ export function InsightsView({ insights, reposByName, onRepoClick }: InsightsVie
               <span>{t("insights.stale", { count: insight.staleIssueCount })}</span>
               <span>{t("insights.views", { count: formatNumber(insight.viewsCount) })}</span>
               <span>{t("insights.downloads", { count: formatNumber(insight.totalDownloads) })}</span>
+              {insight.securityAlertsCount > 0 ? <span>{t("insights.securityAlerts", { count: formatNumber(insight.securityAlertsCount) })}</span> : null}
               <span>{t("repo.pushed", { time: repo.pushedAt ? formatRelativeTime(repo.pushedAt, Date.now(), language) : "-" })}</span>
             </div>
+            {insight.securityAlertsUnavailable ? (
+              <div className="insight-section">
+                <h4>{t("insights.securityStatus")}</h4>
+                <p>{t("insights.securityUnavailable")}</p>
+              </div>
+            ) : null}
             {insight.alerts.length ? (
               <div className="insight-section">
                 <h4>{t("insights.alerts")}</h4>

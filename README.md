@@ -25,6 +25,7 @@ The dashboard pulls data from the GitHub REST and GraphQL APIs and organizes it 
 - **Repositories** — paginated grid with description, language, stars, forks, open issues, last push and a per-repo health score. Filter by organization, language, visibility, forks/archived; sort by stars, recent activity, etc.
 - **Issues / Pull Requests** — cross-repo lists with the same filter sidebar, useful for triage across many projects.
 - **Insights** — overview of all repos with alerts ("issues need attention", "security alerts need attention", "no push for X days"), opportunities, and correlations between traffic and recent activity. Each repo gets a status (Strong / Watch / Risky).
+- **Alerts** — dedicated security-alert view for Dependabot and code scanning findings, so you can jump straight to the repos that need attention.
 - **Daily digest** — short per-repo summary of the day's movement (stars, forks, issues), with an executive summary you can copy as Markdown. Optionally augmented by an OpenAI-generated narrative when `OPENAI_API_KEY` is configured.
 - **Board** — Kanban-style view that groups issues into columns (Backlog, To-do, In progress, Ready, In review, etc.).
 

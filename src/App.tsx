@@ -73,7 +73,7 @@ import { clearFiltersCache, hydrateFilters, readFiltersCache, writeFiltersCache 
 import { useI18n } from "./i18n/I18nProvider";
 import { useCapability } from "./contexts/AccountContext";
 
-type Tab = "inbox" | "repos" | "issues" | "prs" | "kanban" | "insights" | "ci" | "digests";
+type Tab = "inbox" | "repos" | "issues" | "prs" | "kanban" | "insights" | "alerts" | "ci" | "digests";
 type Theme = "dark" | "light" | "auto";
 type TextSize = "small" | "normal" | "large";
 
@@ -84,6 +84,7 @@ const TAB_ROUTES: Record<Tab, string> = {
   prs: "/pull-requests",
   kanban: "/board",
   insights: "/insights",
+  alerts: "/alerts",
   ci: "/ci",
   digests: "/daily",
 };
@@ -336,7 +337,7 @@ export function App() {
 
   useEffect(() => {
     if (authState !== "authenticated") return;
-    if (tab !== "insights" && tab !== "repos") return;
+    if (tab !== "insights" && tab !== "alerts" && tab !== "repos") return;
     const cached = peek<RepoInsightsData>(CACHE_KEY.insights);
     if (cached) setRepoInsights(cached.insights);
     const controller = new AbortController();
@@ -428,6 +429,7 @@ export function App() {
     document.body.classList.toggle("tab-repos", tab === "repos");
     document.body.classList.toggle("tab-kanban", tab === "kanban");
     document.body.classList.toggle("tab-insights", tab === "insights");
+    document.body.classList.toggle("tab-alerts", tab === "alerts");
     document.body.classList.toggle("tab-ci", tab === "ci");
     document.body.classList.toggle("tab-digests", tab === "digests");
     document.body.classList.toggle("filters-open", filtersOpen);
@@ -547,6 +549,13 @@ export function App() {
       .filter((insight) => insight.alerts.length || insight.opportunities.length || insight.correlations.length),
     [filteredRepos, insightsByRepo]
   );
+  const securityInsights = useMemo(
+    () => filteredRepos
+      .map((repo) => insightsByRepo.get(repo.nameWithOwner))
+      .filter((value): value is RepoInsight => Boolean(value))
+      .filter((insight) => insight.securityAlertsCount > 0),
+    [filteredRepos, insightsByRepo]
+  );
   const issuePageSafe = clampPage(issuePage, filteredIssues.length, issuePageSize);
   const prPageSafe = clampPage(prPage, filteredPullRequests.length, prPageSize);
   const repoPageSafe = clampPage(repoPage, filteredRepos.length, repoPageSize);
@@ -560,6 +569,9 @@ export function App() {
   const averageHealth = repoInsights.length ? Math.round(repoInsights.reduce((sum, insight) => sum + insight.healthScore, 0) / repoInsights.length) : 0;
   const totalAlerts = repoInsights.reduce((sum, insight) => sum + insight.alerts.length, 0);
   const totalSecurityAlerts = repoInsights.reduce((sum, insight) => sum + insight.securityAlertsCount, 0);
+  const securityRepoCount = repoInsights.filter((insight) => insight.securityAlertsCount > 0).length;
+  const securityInsightsAlertCount = securityInsights.reduce((sum, insight) => sum + insight.alerts.length, 0);
+  const securityAverageHealth = securityInsights.length ? Math.round(securityInsights.reduce((sum, insight) => sum + insight.healthScore, 0) / securityInsights.length) : 0;
   const reposByName = useMemo(() => new Map(repos.map((repo) => [repo.nameWithOwner, repo])), [repos]);
   const repoModal = useMemo(
     () => (routeRepoName && !routeMetricKind ? reposByName.get(routeRepoName) ?? null : null),
@@ -586,7 +598,7 @@ export function App() {
   const search =
     tab === "inbox"
       ? inboxSearch
-      : tab === "repos" || tab === "insights" || tab === "digests"
+      : tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests"
         ? repoFilters.search
         : tab === "prs"
           ? prFilters.search
@@ -605,7 +617,7 @@ export function App() {
     if (tab === "inbox") {
       setInboxSearch(value);
       setInboxPage(1);
-    } else if (tab === "repos" || tab === "insights" || tab === "digests") {
+    } else if (tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests") {
       setRepoFilters({ ...repoFilters, search: value });
       setRepoPage(1);
     } else if (tab === "prs") {
@@ -618,7 +630,7 @@ export function App() {
   }
 
   function resetFilters() {
-    if (tab === "repos" || tab === "insights" || tab === "digests") setRepoFilters(defaultRepoFilters());
+    if (tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests") setRepoFilters(defaultRepoFilters());
     else if (tab === "prs") setPrFilters(defaultPrFilters());
     else setIssueFilters(defaultIssueFilters());
     clearFiltersCache();
@@ -659,6 +671,7 @@ export function App() {
     { key: "issues" as const, label: t("tabs.issues"), count: issues.length, icon: <IssueIcon /> },
     { key: "prs" as const, label: t("tabs.pullRequests"), count: pullRequests.length, icon: <PulseIcon /> },
     { key: "insights" as const, label: t("tabs.insights"), count: filteredInsights.length, icon: <PulseIcon /> },
+    { key: "alerts" as const, label: t("tabs.alerts"), count: totalSecurityAlerts, icon: <PulseIcon /> },
     { key: "ci" as const, label: t("tabs.ci"), count: ciHealth.length, icon: <PulseIcon /> },
     { key: "digests" as const, label: t("tabs.digest"), count: dailyDigests.length, icon: <PulseIcon /> },
     ...(projectsEnabled
@@ -857,6 +870,24 @@ export function App() {
             </div>
           ) : null}
 
+          {tab === "alerts" ? (
+            <div className="view-alerts" style={{ display: "block" }}>
+              <section className="stats">
+                <div className="stat"><div className="k">{t("alerts.totalAlerts")}</div><div className="v">{formatNumber(totalSecurityAlerts)}</div><div className="sub">{t("alerts.affectedRepos", { count: formatNumber(securityRepoCount) })}</div></div>
+                <div className="stat"><div className="k">{t("alerts.reposWithAlerts")}</div><div className="v">{formatNumber(securityRepoCount)}</div><div className="sub">{t("alerts.securityFocusedView")}</div></div>
+                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(securityAverageHealth)}</div><div className="sub">{t("alerts.acrossSecurityRepos")}</div></div>
+                <div className="stat"><div className="k">{t("stats.alertCount")}</div><div className="v">{formatNumber(securityInsightsAlertCount)}</div><div className="sub">{t("alerts.repoInsightAlerts")}</div></div>
+              </section>
+              <InsightsView
+                insights={securityInsights}
+                reposByName={reposByName}
+                onRepoClick={openRepoModal}
+                emptyTitleKey="alerts.emptyTitle"
+                emptyTextKey="alerts.emptyText"
+              />
+            </div>
+          ) : null}
+
           {tab === "ci" ? (
             (() => {
               const totalRuns = ciHealth.reduce((sum, entry) => sum + entry.totalRuns, 0);
@@ -886,6 +917,7 @@ export function App() {
                 <div className="stat"><div className="k">{t("stats.latestIssueDelta")}</div><div className="v">{dailyDigests[0] ? `${dailyDigests[0].issueDelta >= 0 ? "+" : ""}${formatNumber(dailyDigests[0].issueDelta)}` : "0"}</div><div className="sub">{t("stats.vsPrevious", { period: digestPeriod === "day" ? t("period.day") : t(`period.${digestPeriod}`) })}</div></div>
                 <div className="stat"><div className="k">{t("stats.latestStarsDelta")}</div><div className="v">{dailyDigests[0] ? `${dailyDigests[0].starsDelta >= 0 ? "+" : ""}${formatNumber(dailyDigests[0].starsDelta)}` : "0"}</div><div className="sub">{t("stats.vsPrevious", { period: digestPeriod === "day" ? t("period.day") : t(`period.${digestPeriod}`) })}</div></div>
                 <div className="stat"><div className="k">{t("stats.latestStaleDelta")}</div><div className="v">{dailyDigests[0] ? `${dailyDigests[0].staleIssueDelta >= 0 ? "+" : ""}${formatNumber(dailyDigests[0].staleIssueDelta)}` : "0"}</div><div className="sub">{t("stats.vsPrevious", { period: digestPeriod === "day" ? t("period.day") : t(`period.${digestPeriod}`) })}</div></div>
+                <div className="stat"><div className="k">{t("alerts.totalAlerts")}</div><div className="v">{dailyDigests[0] ? formatNumber(dailyDigests[0].securityAlertsCount) : "0"}</div><div className="sub">{dailyDigests[0] ? t("digest.securityRepos", { count: formatNumber(dailyDigests[0].securityReposCount) }) : t("digest.securityUnavailable")}</div></div>
               </section>
               <DailyDigestView digests={dailyDigests} period={digestPeriod} onPeriodChange={setDigestPeriod} />
             </div>

@@ -305,10 +305,13 @@ export interface DailyRepoDigest {
   forks: number;
   issueCount: number;
   staleIssueCount: number;
+  securityAlertsCount: number;
+  securityAlertsUnavailable: boolean;
   starsDelta: number;
   forksDelta: number;
   issueDelta: number;
   staleIssueDelta: number;
+  securityAlertsDelta: number;
   highlights: string[];
   executiveSummary: string[];
   momentum: string[];
@@ -326,6 +329,9 @@ export interface DailyDigestEntry {
   repoCount: number;
   issueCount: number;
   staleIssueCount: number;
+  securityAlertsCount: number;
+  securityReposCount: number;
+  securityAlertsUnavailable: boolean;
   totalStars: number;
   totalForks: number;
   issueDelta: number;
