@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { FacetValue, IssueFilters, PullRequestFilters, RepoFilters } from "../utils/dashboard";
 import { getLanguageColor } from "../utils/colors";
 import { INBOX_MAILBOXES, type InboxMailbox } from "../utils/inbox";
@@ -108,9 +108,30 @@ function CheckList({
 
 function FilterSection({ title, activeCount, children, dataFor, open = false, onClear }: { title: string; activeCount: number; children: ReactNode; dataFor?: string; open?: boolean; onClear?: () => void }) {
   const { t } = useI18n();
+  const [isOpen, setIsOpen] = useState(open || activeCount > 0);
+  const prevActiveCountRef = useRef(activeCount);
+  // Auto-open when filters become active, but never auto-close — the user may
+  // want to deselect the last item and pick a different one without the panel
+  // collapsing on them (issue #12). Sections passed `open` (Organizations,
+  // Visibility, Options) stay pinned open as before.
+  useEffect(() => {
+    const prev = prevActiveCountRef.current;
+    prevActiveCountRef.current = activeCount;
+    if (prev === 0 && activeCount > 0) setIsOpen(true);
+  }, [activeCount]);
+  const effectiveOpen = open || isOpen;
   const clearable = activeCount > 0 && Boolean(onClear);
   return (
-    <details className="section" data-for={dataFor} open={open || activeCount > 0}>
+    <details
+      className="section"
+      data-for={dataFor}
+      open={effectiveOpen}
+      onToggle={(event) => {
+        const next = (event.currentTarget as HTMLDetailsElement).open;
+        if (open && !next) return;
+        setIsOpen(next);
+      }}
+    >
       <summary>
         <ChevronIcon />
         {title}
