@@ -23,6 +23,7 @@ import type {
   ProviderConfig,
   ProviderIdentity,
 } from "./types";
+import { AuthRequiredError } from "../githubClient";
 import { getContribFilter } from "../settingsStore";
 
 const execFileAsync = promisify(execFile);
@@ -258,7 +259,7 @@ export class GitHubProvider implements Provider {
       },
       body: JSON.stringify({ query, variables }),
     });
-    if (response.status === 401) throw new GitHubAuthRequiredError();
+    if (response.status === 401) throw new AuthRequiredError();
     const json = (await response.json()) as { data?: T; errors?: { message: string }[] };
     if (json.errors?.length) throw new Error(json.errors.map((entry) => entry.message).join("; "));
     if (!json.data) throw new Error("Empty GraphQL response");
@@ -282,7 +283,7 @@ export class GitHubProvider implements Provider {
       );
       return { ok: true, owners };
     } catch (error) {
-      if (error instanceof GitHubAuthRequiredError) return { ok: false, error: "authentication required", needsAuth: true };
+      if (error instanceof AuthRequiredError) return { ok: false, error: "authentication required", needsAuth: true };
       return { ok: false, error: (error as Error).message || String(error) };
     }
   }
@@ -555,12 +556,9 @@ export class GitHubProvider implements Provider {
   }
 }
 
-export class GitHubAuthRequiredError extends Error {
-  constructor(message = "authentication required") {
-    super(message);
-    this.name = "GitHubAuthRequiredError";
-  }
-}
+// Unified: GitHubAuthRequiredError is the same concept as AuthRequiredError;
+// keep this alias so that any external import of the old name still resolves.
+export { AuthRequiredError as GitHubAuthRequiredError };
 
 const REPO_LIST_QUERY = `
 query($owner: String!, $cursor: String) {

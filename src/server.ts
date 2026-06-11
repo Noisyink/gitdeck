@@ -12,7 +12,6 @@ import {
 } from "./server/dashboardData";
 import { getLatestRepoDigest, handleDailyDigests } from "./server/digests";
 import {
-  AuthRequiredError,
   getToken,
   ghApiJson,
   gql,
@@ -88,8 +87,8 @@ function parseRepo(raw: string | null): [string, string] | null {
 }
 
 async function handleStargazers(res: ServerResponse, u: URL): Promise<void> {
-  const rp = parseRepo(u.searchParams.get("repo"));
-  if (!rp) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
   const direction = (u.searchParams.get("direction") || "DESC").toUpperCase();
   if (!ALLOWED_DIRECTIONS.has(direction)) return sendJson(res, 400, { ok: false, error: "invalid direction" });
   const cursor = u.searchParams.get("cursor") || null;
@@ -110,8 +109,8 @@ async function handleStargazers(res: ServerResponse, u: URL): Promise<void> {
 }
 
 async function handleForks(res: ServerResponse, u: URL): Promise<void> {
-  const rp = parseRepo(u.searchParams.get("repo"));
-  if (!rp) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
   const direction = (u.searchParams.get("direction") || "DESC").toUpperCase();
   if (!ALLOWED_DIRECTIONS.has(direction)) return sendJson(res, 400, { ok: false, error: "invalid direction" });
   const field = (u.searchParams.get("field") || "PUSHED_AT").toUpperCase();
@@ -165,8 +164,9 @@ interface RestCodeSearchItem {
 }
 
 async function handleMentionIssues(res: ServerResponse, u: URL): Promise<void> {
-  const repo = u.searchParams.get("repo");
-  if (!parseRepo(repo) || !repo) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
+  const repo = `${rp[0]}/${rp[1]}`;
   const aliases = await getAliases(repo);
   const selfNames = new Set([repo, ...aliases]);
   const query = buildMentionQuery(repo, aliases);
@@ -193,8 +193,9 @@ async function handleMentionIssues(res: ServerResponse, u: URL): Promise<void> {
 }
 
 async function handleMentionCode(res: ServerResponse, u: URL): Promise<void> {
-  const repo = u.searchParams.get("repo");
-  if (!parseRepo(repo) || !repo) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
+  const repo = `${rp[0]}/${rp[1]}`;
   const aliases = await getAliases(repo);
   const selfNames = new Set([repo, ...aliases]);
   const query = buildMentionQuery(repo, aliases);
@@ -215,8 +216,9 @@ async function handleMentionCode(res: ServerResponse, u: URL): Promise<void> {
 }
 
 async function handleRepoAliases(req: IncomingMessage, res: ServerResponse, u: URL): Promise<void> {
-  const repo = u.searchParams.get("repo");
-  if (!parseRepo(repo) || !repo) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
+  const repo = `${rp[0]}/${rp[1]}`;
 
   if (req.method === "GET") {
     const aliases = await getAliases(repo);
@@ -224,9 +226,8 @@ async function handleRepoAliases(req: IncomingMessage, res: ServerResponse, u: U
   }
 
   if (req.method === "POST") {
-    let parsed: { alias?: string };
-    try { parsed = (await readJsonBody(req)) as { alias?: string }; }
-    catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+    const parsed = await readBody<{ alias?: string }>(req, res);
+    if (parsed === null) return;
     const alias = (parsed.alias || "").trim();
     if (!isValidRepoName(alias)) return sendJson(res, 400, { ok: false, error: "alias must be in 'owner/repo' format" });
     if (alias === repo) return sendJson(res, 400, { ok: false, error: "alias cannot equal the repository name" });
@@ -245,8 +246,9 @@ async function handleRepoAliases(req: IncomingMessage, res: ServerResponse, u: U
 }
 
 async function handleReferrers(res: ServerResponse, u: URL): Promise<void> {
-  const repo = u.searchParams.get("repo");
-  if (!parseRepo(repo) || !repo) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
+  const repo = `${rp[0]}/${rp[1]}`;
   const [refs, paths, views, clones] = await Promise.all([
     ghApiJson(`/repos/${repo}/traffic/popular/referrers`),
     ghApiJson(`/repos/${repo}/traffic/popular/paths`),
@@ -348,8 +350,9 @@ function parseDependentsHtml(html: string): {
 }
 
 async function handleDependents(res: ServerResponse, u: URL): Promise<void> {
-  const repo = u.searchParams.get("repo");
-  if (!parseRepo(repo) || !repo) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
+  const repo = `${rp[0]}/${rp[1]}`;
   const type = (u.searchParams.get("type") || "REPOSITORY").toUpperCase();
   if (type !== "REPOSITORY" && type !== "PACKAGE") {
     return sendJson(res, 400, { ok: false, error: "invalid type" });
@@ -680,13 +683,31 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return JSON.parse(body);
 }
 
+// Slice-6 helper: parse the request body as JSON and return it, or send 400 and
+// return null so the caller can `if (parsed === null) return;`.
+async function readBody<T>(req: IncomingMessage, res: ServerResponse): Promise<T | null> {
+  try {
+    return (await readJsonBody(req)) as T;
+  } catch {
+    sendJson(res, 400, { ok: false, error: "invalid JSON" });
+    return null;
+  }
+}
+
+// Slice-6 helper: parse a `repo` query/body value and return the [owner,name]
+// pair, or send 400 and return null so the caller can `if (!rp) return;`.
+function requireRepo(raw: string | null | undefined, res: ServerResponse): [string, string] | null {
+  const rp = parseRepo(raw ?? null);
+  if (!rp) sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  return rp;
+}
+
 async function handleProjectMove(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") {
     return sendJson(res, 405, { ok: false, error: "POST required" });
   }
-  let parsed: { projectId?: string; itemId?: string; fieldId?: string; optionId?: string | null };
-  try { parsed = (await readJsonBody(req)) as typeof parsed; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+  const parsed = await readBody<{ projectId?: string; itemId?: string; fieldId?: string; optionId?: string | null }>(req, res);
+  if (parsed === null) return;
   const { projectId, itemId, fieldId } = parsed;
   const optionId = parsed.optionId ?? null;
   if (!projectId || !itemId || !fieldId) {
@@ -709,8 +730,9 @@ async function handleProjectMove(req: IncomingMessage, res: ServerResponse): Pro
 /* ===================== REPO DETAILS ===================== */
 
 async function handleRepoDetails(res: ServerResponse, u: URL): Promise<void> {
-  const repo = u.searchParams.get("repo");
-  if (!parseRepo(repo) || !repo) return sendJson(res, 400, { ok: false, error: "invalid repo" });
+  const rp = requireRepo(u.searchParams.get("repo"), res);
+  if (!rp) return;
+  const repo = `${rp[0]}/${rp[1]}`;
 
   async function fetchContributors() {
     return restApiPaginate(`/repos/${repo}/contributors?per_page=100&anon=1`);
@@ -900,9 +922,8 @@ async function handleAccountsList(res: ServerResponse): Promise<void> {
 
 async function handleAccountActivate(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
-  let parsed: { id?: string };
-  try { parsed = (await readJsonBody(req)) as { id?: string }; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+  const parsed = await readBody<{ id?: string }>(req, res);
+  if (parsed === null) return;
   const id = (parsed.id || "").trim();
   if (!id) return sendJson(res, 400, { ok: false, error: "missing id" });
   await initAccountStore();
@@ -928,9 +949,8 @@ async function handleProviderConfigsList(res: ServerResponse): Promise<void> {
 
 async function handleAccountAddToken(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
-  let parsed: { providerConfigId?: string; token?: string; label?: string };
-  try { parsed = (await readJsonBody(req)) as typeof parsed; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+  const parsed = await readBody<{ providerConfigId?: string; token?: string; label?: string }>(req, res);
+  if (parsed === null) return;
   const providerConfigId = (parsed.providerConfigId || "").trim();
   const token = (parsed.token || "").trim();
   if (!providerConfigId) return sendJson(res, 400, { ok: false, error: "missing providerConfigId" });
@@ -980,13 +1000,12 @@ async function handleAccountRemove(req: IncomingMessage, res: ServerResponse, u:
 // Noisyink fork: post a comment to an issue or PR from the inline reply box.
 async function handleCreateComment(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
-  let parsed: { repo?: string; number?: number; body?: string };
-  try { parsed = (await readJsonBody(req)) as typeof parsed; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
-  const repoPair = parseRepo(parsed.repo ?? null);
+  const parsed = await readBody<{ repo?: string; number?: number; body?: string }>(req, res);
+  if (parsed === null) return;
+  const repoPair = requireRepo(parsed.repo, res);
   const number = Number(parsed.number);
   const body = (parsed.body || "").trim();
-  if (!repoPair) return sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  if (!repoPair) return;
   if (!Number.isInteger(number) || number <= 0) return sendJson(res, 400, { ok: false, error: "missing or invalid number" });
   if (!body) return sendJson(res, 400, { ok: false, error: "empty comment body" });
   const account = await getActiveAccount();
@@ -1002,9 +1021,9 @@ async function handleCreateComment(req: IncomingMessage, res: ServerResponse): P
 
 // Noisyink fork: issue/PR body + timeline for the inline thread view.
 async function handleThread(req: IncomingMessage, res: ServerResponse, u: URL): Promise<void> {
-  const repoPair = parseRepo(u.searchParams.get("repo"));
+  const repoPair = requireRepo(u.searchParams.get("repo"), res);
   const number = Number(u.searchParams.get("number"));
-  if (!repoPair) return sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  if (!repoPair) return;
   if (!Number.isInteger(number) || number <= 0) return sendJson(res, 400, { ok: false, error: "missing or invalid number" });
   const account = await getActiveAccount();
   if (!account) return sendJson(res, 401, { ok: false, error: "authentication required", needsAuth: true });
@@ -1024,9 +1043,8 @@ async function handleSettings(req: IncomingMessage, res: ServerResponse): Promis
     return sendJson(res, 200, { ok: true, settings: await getPublicSettings() });
   }
   if (req.method === "PUT") {
-    let parsed: Record<string, unknown>;
-    try { parsed = (await readJsonBody(req)) as Record<string, unknown>; }
-    catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+    const parsed = await readBody<Record<string, unknown>>(req, res);
+    if (parsed === null) return;
     const updated = await updateSettings(parsed);
     return sendJson(res, 200, { ok: true, settings: updated });
   }
@@ -1038,12 +1056,11 @@ async function handleSettings(req: IncomingMessage, res: ServerResponse): Promis
 // bypasses the cache (the Regenerate button).
 async function handleSummary(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
-  let parsed: { repo?: string; number?: number; model?: string; fresh?: boolean };
-  try { parsed = (await readJsonBody(req)) as typeof parsed; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
-  const repoPair = parseRepo(parsed.repo ?? null);
+  const parsed = await readBody<{ repo?: string; number?: number; model?: string; fresh?: boolean }>(req, res);
+  if (parsed === null) return;
+  const repoPair = requireRepo(parsed.repo, res);
   const number = Number(parsed.number);
-  if (!repoPair) return sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  if (!repoPair) return;
   if (!Number.isInteger(number) || number <= 0) return sendJson(res, 400, { ok: false, error: "missing or invalid number" });
   const settings = await getPublicSettings();
   if (!settings.anthropicConfigured) return sendJson(res, 400, { ok: false, error: "no Anthropic API key configured", needsKey: true });
@@ -1072,6 +1089,17 @@ async function handleSummary(req: IncomingMessage, res: ServerResponse): Promise
 }
 
 /* ===================== ROUTING ===================== */
+
+// Slice-6: cached-route dispatch table. The route prefixes must be ordered
+// most-specific first so /api/ci-health does not shadow a hypothetical longer
+// prefix. Each entry: [urlPrefix, (fresh: boolean) => Promise<{ok:boolean;...}>]
+type CachedFetcher = (fresh: boolean) => Promise<{ ok: boolean }>;
+const CACHED_ROUTES: [string, CachedFetcher][] = [
+  ["/api/ci-health", getCIHealthCached],
+  ["/api/repos", getReposCached],
+  ["/api/issues", getIssuesCached],
+  ["/api/prs", getPullRequestsCached],
+];
 
 const APP_ROUTES = new Set([
   "/",
@@ -1144,13 +1172,16 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   if (url.startsWith("/api/daily-digests")) {
     return handleDailyDigests(req, res);
   }
-  if (url.startsWith("/api/ci-health")) {
-    const u = new URL(url, "http://localhost");
-    const fresh = u.searchParams.get("fresh") === "1";
-    const payload = await getCIHealthCached(fresh);
-    const status = payload.ok ? 200 : payload.needsAuth ? 401 : 500;
-    sendJsonCacheable(req, res, status, payload);
-    return;
+  // Slice-6: table-driven cached data routes — all share the same 7-line
+  // shape (parse fresh, call fetcher, derive status, sendJsonCacheable).
+  for (const [prefix, fetcher] of CACHED_ROUTES) {
+    if (url.startsWith(prefix)) {
+      const fresh = new URL(url, "http://localhost").searchParams.get("fresh") === "1";
+      const payload = await fetcher(fresh);
+      const status = payload.ok ? 200 : (payload as { needsAuth?: boolean }).needsAuth ? 401 : 500;
+      sendJsonCacheable(req, res, status, payload);
+      return;
+    }
   }
   if (url.startsWith("/api/projects")) {
     return handleProjects(res);
@@ -1160,30 +1191,6 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (url.startsWith("/api/project")) {
     return handleProject(res, new URL(url, "http://localhost"));
-  }
-  if (url.startsWith("/api/repos")) {
-    const u = new URL(url, "http://localhost");
-    const fresh = u.searchParams.get("fresh") === "1";
-    const payload = await getReposCached(fresh);
-    const status = payload.ok ? 200 : payload.needsAuth ? 401 : 500;
-    sendJsonCacheable(req, res, status, payload);
-    return;
-  }
-  if (url.startsWith("/api/issues")) {
-    const u = new URL(url, "http://localhost");
-    const fresh = u.searchParams.get("fresh") === "1";
-    const payload = await getIssuesCached(fresh);
-    const status = payload.ok ? 200 : payload.needsAuth ? 401 : 500;
-    sendJsonCacheable(req, res, status, payload);
-    return;
-  }
-  if (url.startsWith("/api/prs")) {
-    const u = new URL(url, "http://localhost");
-    const fresh = u.searchParams.get("fresh") === "1";
-    const payload = await getPullRequestsCached(fresh);
-    const status = payload.ok ? 200 : payload.needsAuth ? 401 : 500;
-    sendJsonCacheable(req, res, status, payload);
-    return;
   }
   if (url.startsWith("/api/comment")) {
     return handleCreateComment(req, res);
