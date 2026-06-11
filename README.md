@@ -4,7 +4,7 @@
 >
 > The upstream codebase was AI-scaffolded. This fork is being progressively rewritten by hand and will diverge substantially over time, so treat it as a personal work in progress, not a drop-in of upstream.
 >
-> **What already differs:** the Issues and Pull Requests views are scoped to the authenticated user's own contributions across every repository (`author:@me`), so the dashboard tracks your PRs and issues in public upstream repos you do not own, instead of only repositories you own. Override the qualifier with the `GH_DASH_FILTER` environment variable.
+> **What already differs:** the Issues and Pull Requests views are scoped to the authenticated user's own contributions across every repository (`author:@me`), so the dashboard tracks your PRs and issues in public upstream repos you do not own, instead of only repositories you own. Override the qualifier with the `GH_DASH_FILTER` environment variable. The Repos grid likewise includes repositories you have contributed to but do not own (via `repositoriesContributedTo`), not just ones you own.
 >
 > Licensed MIT (see [`LICENSE`](LICENSE)); the original copyright notice is retained.
 

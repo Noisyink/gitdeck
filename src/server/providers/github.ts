@@ -289,9 +289,18 @@ export class GitHubProvider implements Provider {
 
   async listRepos(account: Account, owners: string[]): Promise<GhRepo[]> {
     const lists = await Promise.all(owners.map((owner) => this.reposForOwner(account, owner)));
+    // Noisyink fork: also surface repos you've contributed to but don't own
+    // (e.g. upstream OSS like foundryvtt/pf2e), so the Repos grid matches the
+    // author:@me scope of the Issues/PRs tabs. Best-effort; ignored on error.
+    let contributed: GhRepo[] = [];
+    try {
+      contributed = await this.reposContributedTo(account);
+    } catch {
+      contributed = [];
+    }
     const seen = new Set<string>();
     const result: GhRepo[] = [];
-    for (const list of lists) {
+    for (const list of [...lists, contributed]) {
       for (const repo of list) {
         if (seen.has(repo.nameWithOwner)) continue;
         seen.add(repo.nameWithOwner);
@@ -299,6 +308,43 @@ export class GitHubProvider implements Provider {
       }
     }
     return result;
+  }
+
+  private async reposContributedTo(account: Account): Promise<GhRepo[]> {
+    const collected: GhRepo[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < 10; page++) {
+      let data: ReposContributedResponse;
+      try {
+        data = await this.gqlCall<ReposContributedResponse>(account, REPOS_CONTRIBUTED_QUERY, { cursor });
+      } catch {
+        return collected;
+      }
+      const conn = data.viewer?.repositoriesContributedTo;
+      if (!conn) return collected;
+      for (const node of conn.nodes) {
+        collected.push({
+          nameWithOwner: node.nameWithOwner,
+          name: node.name,
+          owner: node.owner,
+          description: node.description,
+          stargazerCount: node.stargazerCount,
+          forkCount: node.forkCount,
+          primaryLanguage: node.primaryLanguage,
+          updatedAt: node.updatedAt,
+          pushedAt: node.pushedAt,
+          visibility: node.visibility?.toLowerCase() ?? "",
+          isPrivate: node.isPrivate,
+          isArchived: node.isArchived,
+          isFork: node.isFork,
+          url: node.url,
+        });
+      }
+      if (!conn.pageInfo.hasNextPage) break;
+      cursor = conn.pageInfo.endCursor;
+      if (!cursor) break;
+    }
+    return collected;
   }
 
   private async reposForOwner(account: Account, owner: string): Promise<GhRepo[]> {
@@ -521,6 +567,27 @@ query($owner: String!, $cursor: String) {
   }
 }`;
 
+// Noisyink fork: repos the authenticated user has contributed to but does not
+// own (includeUserRepositories: false), so the Repos grid can show upstream OSS
+// you work in (foundryvtt/pf2e etc.). Same node shape as REPO_LIST_QUERY.
+const REPOS_CONTRIBUTED_QUERY = `
+query($cursor: String) {
+  viewer {
+    repositoriesContributedTo(first: 100, after: $cursor, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST, ISSUE, PULL_REQUEST_REVIEW]) {
+      pageInfo { endCursor hasNextPage }
+      nodes {
+        nameWithOwner name
+        owner { login avatarUrl }
+        description stargazerCount forkCount
+        primaryLanguage { name }
+        updatedAt pushedAt
+        visibility
+        isPrivate isArchived isFork url
+      }
+    }
+  }
+}`;
+
 const ISSUE_SEARCH_QUERY = `
 query($q: String!, $cursor: String) {
   search(query: $q, type: ISSUE, first: 100, after: $cursor) {
@@ -633,6 +700,15 @@ interface RepoNode {
 interface RepoListResponse {
   repositoryOwner: {
     repositories: {
+      pageInfo: { endCursor: string | null; hasNextPage: boolean };
+      nodes: RepoNode[];
+    };
+  } | null;
+}
+
+interface ReposContributedResponse {
+  viewer: {
+    repositoriesContributedTo: {
       pageInfo: { endCursor: string | null; hasNextPage: boolean };
       nodes: RepoNode[];
     };
