@@ -5,7 +5,6 @@ import { buildDailyDigestEntries, buildDailyDigestRecord, buildPeriodDigestEntri
 import { DATA_DIR, DIGESTS_PATH } from "./config";
 import { sendJsonCacheable } from "./http";
 import { fetchRepoSecuritySummary } from "./securityAlerts";
-import { maybeGenerateOpenAIDigest } from "./openaiDigest";
 
 const MAX_DIGEST_DAYS = 120;
 
@@ -64,15 +63,6 @@ function parsePeriod(value: string | null): DigestPeriod {
 
 export async function handleDailyDigests(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const records = await loadDigests();
-  const latest = records[records.length - 1];
-  if (latest && !latest.ai) {
-    try {
-      latest.ai = await maybeGenerateOpenAIDigest(latest);
-      await saveDigests();
-    } catch {
-      // AI enrichment is optional and should never break digest delivery.
-    }
-  }
   const url = new URL(req.url ?? "/", "http://localhost");
   const period = parsePeriod(url.searchParams.get("period"));
   const digests = buildPeriodDigestEntries(records, period);
@@ -91,12 +81,5 @@ export async function getLatestRepoDigest(repo: string): Promise<DailyRepoDigest
   if (!latest) return null;
   const repoDigest = latest.repos.find((entry) => entry.repo === repo);
   if (!repoDigest) return null;
-  if (!repoDigest.ai) {
-    try {
-      repoDigest.ai = await maybeGenerateOpenAIDigest(repoDigest);
-    } catch {
-      repoDigest.ai = null;
-    }
-  }
   return repoDigest;
 }
