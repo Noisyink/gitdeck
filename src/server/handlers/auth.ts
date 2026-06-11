@@ -10,6 +10,7 @@ import {
 import { getAuthMode } from "../authProvider";
 import { invalidateDataCache } from "../dashboardData";
 import { invalidateCIHealthCache } from "../ciHealth";
+import { invalidateNotificationsCache } from "../notifications";
 
 export async function handleAuthStatus(res: ServerResponse): Promise<void> {
   const status = await authStatus();
@@ -70,5 +71,6 @@ export async function handleAuthLogout(req: IncomingMessage, res: ServerResponse
   await logout();
   invalidateDataCache();
   invalidateCIHealthCache();
+  invalidateNotificationsCache();
   sendJson(res, 200, { ok: true });
 }

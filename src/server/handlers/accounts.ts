@@ -13,6 +13,7 @@ import {
 import { getProvider, getProviderForAccount } from "../providers/registry";
 import { invalidateDataCache } from "../dashboardData";
 import { invalidateCIHealthCache } from "../ciHealth";
+import { invalidateNotificationsCache } from "../notifications";
 import { readBody } from "./shared";
 
 export interface AccountSummary {
@@ -74,6 +75,7 @@ export async function handleAccountActivate(req: IncomingMessage, res: ServerRes
   if (!account) return sendJson(res, 404, { ok: false, error: "account not found" });
   invalidateDataCache();
   invalidateCIHealthCache();
+  invalidateNotificationsCache();
   sendJson(res, 200, { ok: true, activeId: account.id });
 }
 
@@ -125,6 +127,7 @@ export async function handleAccountAddToken(req: IncomingMessage, res: ServerRes
   });
   invalidateDataCache();
   invalidateCIHealthCache();
+  invalidateNotificationsCache();
   sendJson(res, 200, { ok: true, accountId: account.id });
 }
 
@@ -137,5 +140,6 @@ export async function handleAccountRemove(req: IncomingMessage, res: ServerRespo
   if (!existed) return sendJson(res, 404, { ok: false, error: "account not found" });
   invalidateDataCache();
   invalidateCIHealthCache();
+  invalidateNotificationsCache();
   sendJson(res, 200, { ok: true });
 }

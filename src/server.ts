@@ -33,6 +33,7 @@ import { handleThread } from "./server/handlers/thread";
 import { handleSummary } from "./server/handlers/summary";
 import { handleCreateComment } from "./server/handlers/comment";
 import { handleSettings } from "./server/handlers/settings";
+import { handleNotifications, handleNotificationRead, handleNotificationsReadAll } from "./server/handlers/notifications";
 
 /* ===================== ROUTING ===================== */
 
@@ -59,6 +60,7 @@ const APP_ROUTES = new Set([
   "/daily",
   "/board",
   "/alert",
+  "/inbox",
 ]);
 
 async function sendClientIndex(res: ServerResponse): Promise<void> {
@@ -146,6 +148,15 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (url.startsWith("/api/settings")) {
     return handleSettings(req, res);
+  }
+  if (url.startsWith("/api/notifications/read-all")) {
+    return handleNotificationsReadAll(req, res);
+  }
+  if (url.startsWith("/api/notifications/read")) {
+    return handleNotificationRead(req, res);
+  }
+  if (url.startsWith("/api/notifications")) {
+    return handleNotifications(req, res, new URL(url, "http://localhost"));
   }
   if (url.startsWith("/api/summary")) {
     return handleSummary(req, res);

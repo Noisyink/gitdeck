@@ -4,8 +4,18 @@ import { getLanguageColor } from "../utils/colors";
 import { formatNumber } from "../utils/format";
 import { ChevronIcon, CloseIcon, SearchIcon } from "./common/Icons";
 import { useI18n } from "../i18n/I18nProvider";
+import { INBOX_MAILBOXES, type InboxMailbox } from "../utils/inbox";
 
-type Tab = "issues" | "repos" | "kanban" | "insights" | "alerts" | "ci" | "digests" | "prs";
+type Tab = "inbox" | "issues" | "repos" | "kanban" | "insights" | "alerts" | "ci" | "digests" | "prs";
+
+export interface InboxSidebarState {
+  mailbox: InboxMailbox;
+  counts: Record<InboxMailbox, number>;
+  totalCount: number;
+  unreadCount: number;
+  onMailboxChange: (mailbox: InboxMailbox) => void;
+  onMarkAllRead: () => void;
+}
 
 type IssueLikeFacets = {
   orgs: Map<string, number>;
@@ -34,6 +44,7 @@ interface SidebarControlsProps {
   onReset: () => void;
   onClose: () => void;
   authLogin?: string;
+  inbox?: InboxSidebarState;
 }
 
 function toggleSetValue(values: Set<string>, value: string): Set<string> {
@@ -159,8 +170,51 @@ export function SidebarControls({
   onReset,
   onClose,
   authLogin,
+  inbox,
 }: SidebarControlsProps) {
   const { t } = useI18n();
+  const inboxMode = tab === "inbox";
+
+  if (inboxMode && inbox) {
+    return (
+      <aside className="sidebar" id="sidebar">
+        <div className="side-head">
+          <h2>{t("sidebar.mailboxes")}</h2>
+          <span className="reset" style={{ pointerEvents: "none" }}>{formatNumber(inbox.totalCount)}</span>
+          <button className="side-close" aria-label={t("common.closeFilters")} onClick={onClose}><CloseIcon /></button>
+        </div>
+        <div className="search-wrap">
+          <label className="search-input">
+            <SearchIcon />
+            <input type="search" placeholder={t("sidebar.searchInbox")} autoComplete="off" value={search} onChange={(event) => onSearchChange(event.target.value)} />
+          </label>
+        </div>
+        <div className="mailbox-list">
+          {INBOX_MAILBOXES.map((entry) => {
+            const count = inbox.counts[entry.key] ?? 0;
+            const active = inbox.mailbox === entry.key;
+            return (
+              <button
+                className={`mailbox-item ${active ? "active" : ""}`}
+                key={entry.key}
+                type="button"
+                onClick={() => inbox.onMailboxChange(entry.key)}
+              >
+                <span>{t(`mailbox.${entry.key}`)}</span>
+                <strong>{formatNumber(count)}</strong>
+              </button>
+            );
+          })}
+        </div>
+        {inbox.unreadCount > 0 ? (
+          <button className="mailbox-action" type="button" onClick={inbox.onMarkAllRead}>
+            {t("sidebar.markAllRead", { count: formatNumber(inbox.unreadCount) })}
+          </button>
+        ) : null}
+      </aside>
+    );
+  }
+
   const prMode = tab === "prs";
   const issueMode = tab === "issues" || tab === "kanban";
   const ticketMode = prMode || issueMode;
