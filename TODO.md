@@ -33,10 +33,13 @@ Personal-fork backlog for `Noisyink/gitdeck`. Running on the home server at `:87
       and test-gap gates. Reviewer's 3 fix-now items (Anthropic error proxy + timeout,
       ReplyBox confirm snapshot) are **fixed**; the during-rewrite items (F-03/04/06-10)
       are folded into the slice plan.
-- [ ] Execute the **hand rewrite** per `REWRITE-REVIEW.md` — 8 slices, deletions
-      first (tokenStore → OpenAI digest → Inbox → Forgejo seam), monoliths last;
-      characterization tests required before slices 5 and 6/7. Keep `upstream-mirror`
-      as the diff baseline.
+- [~] Execute the **hand rewrite** per `REWRITE-REVIEW.md` — **slices 1-5 done**
+      (deleted `tokenStore`, OpenAI digest, the Inbox/notifications stack, and
+      collapsed the two-forge provider seam to GitHub-only; 22 characterization
+      tests added for the fork provider methods; 90 tests green; live + verified).
+      **Remaining: slices 6-8** (server.ts dedup → server.ts split into handlers →
+      App.tsx split) — the monolith refactors; need route-level characterization
+      tests before 6/7.
 
 ## New server / migration (cross-ref `../migration/TODO.md`, blocked on K8 Plus hardware)
 - [ ] Fold gitdeck into the **services-guest** stack behind **Caddy** (+ likely
