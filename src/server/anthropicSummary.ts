@@ -29,6 +29,7 @@ function buildPrompt(thread: ThreadOk, repo: string, issueNumber: number): strin
   for (const entry of thread.entries) {
     if (entry.kind === "comment") lines.push(`- ${entry.actor?.login ?? "someone"} commented: ${stripHtml(entry.bodyHtml).slice(0, 1500)}`);
     else if (entry.kind === "review") lines.push(`- ${entry.actor?.login ?? "someone"} reviewed (${entry.state}): ${stripHtml(entry.bodyHtml).slice(0, 1500)}`);
+    else if (entry.kind === "review-comment") lines.push(`- ${entry.actor?.login ?? "someone"} commented on ${entry.path}: ${stripHtml(entry.bodyHtml).slice(0, 1500)}`);
     else lines.push(`- ${entry.actor?.login ?? "someone"} ${entry.eventType}${entry.detail ? ` ${entry.detail}` : ""}`);
   }
   return lines.join("\n").slice(0, 24000);

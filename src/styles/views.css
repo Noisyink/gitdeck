@@ -974,6 +974,7 @@
   .thread-comment-head strong { font-size: 13px; }
   .thread-comment-head em { color: var(--muted); font-style: normal; margin-left: auto; }
   .thread-review-state { text-transform: capitalize; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--panel-3); color: var(--muted); }
+  .thread-review-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; padding: 1px 7px; border-radius: 4px; background: var(--panel-3); color: var(--muted); }
   .thread-review-state.approved { background: var(--accent-soft); color: var(--accent); }
   .thread-review-state.changes_requested { background: rgba(255, 99, 99, 0.16); color: var(--danger); }
   .thread-body { padding: 10px 12px; font-size: 13px; line-height: 1.55; color: var(--text); overflow-wrap: anywhere; }

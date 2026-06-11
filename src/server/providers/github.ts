@@ -560,6 +560,23 @@ export class GitHubProvider implements Provider {
           if (entry) entries.push(entry);
         }
       }
+      // PR inline code-review comments live on a separate endpoint; merge them in.
+      if (item.isPullRequest) {
+        const reviewRes = await fetch(`${this.config.baseUrl}/repos/${repo}/pulls/${issueNumber}/comments?per_page=100`, { headers: htmlHeaders });
+        if (reviewRes.ok) {
+          for (const comment of (await reviewRes.json()) as RawReviewComment[]) {
+            entries.push({
+              kind: "review-comment",
+              actor: toThreadActor(comment.user),
+              createdAt: comment.created_at ?? "",
+              bodyHtml: comment.body_html ?? escapeHtml(comment.body ?? ""),
+              path: comment.path ?? "",
+              url: comment.html_url ?? "",
+            });
+          }
+        }
+      }
+      entries.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
       return { ok: true, item, entries, truncated };
     } catch (error) {
       return { ok: false, status: 500, error: (error as Error).message || String(error) };
@@ -822,6 +839,19 @@ interface RawTimelineEvent {
   assignee?: RawThreadUser | null;
   requested_reviewer?: RawThreadUser | null;
   requested_team?: { name?: string };
+  milestone?: { title?: string };
+  message?: string;
+  source?: { issue?: { number?: number; title?: string } };
+}
+
+// Noisyink fork: a PR review comment (inline code-review comment).
+interface RawReviewComment {
+  user?: RawThreadUser | null;
+  body_html?: string;
+  body?: string;
+  html_url?: string;
+  created_at?: string;
+  path?: string;
 }
 
 function escapeHtml(value: string): string {
@@ -844,6 +874,16 @@ const TIMELINE_EVENT_DETAIL: Record<string, (event: RawTimelineEvent) => string>
   unassigned: (event) => event.assignee?.login ?? "",
   review_requested: (event) => event.requested_reviewer?.login ?? event.requested_team?.name ?? "",
   review_request_removed: (event) => event.requested_reviewer?.login ?? "",
+  milestoned: (event) => event.milestone?.title ?? "",
+  demilestoned: (event) => event.milestone?.title ?? "",
+  committed: (event) => (event.message ?? "").split("\n")[0].slice(0, 80),
+  "cross-referenced": (event) => (event.source?.issue?.number ? `#${event.source.issue.number}` : ""),
+  ready_for_review: () => "",
+  convert_to_draft: () => "",
+  head_ref_force_pushed: () => "",
+  head_ref_deleted: () => "",
+  connected: () => "",
+  auto_merge_enabled: () => "",
 };
 
 function normalizeTimelineEvent(event: RawTimelineEvent): ThreadEntry | null {

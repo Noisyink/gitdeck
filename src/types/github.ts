@@ -534,6 +534,7 @@ export interface ThreadItem {
 export type ThreadEntry =
   | { kind: "comment"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; url: string }
   | { kind: "review"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; state: string }
+  | { kind: "review-comment"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; path: string; url: string }
   | { kind: "event"; actor: ThreadActor | null; createdAt: string; eventType: string; detail: string };
 
 export interface ThreadData {

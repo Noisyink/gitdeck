@@ -64,7 +64,17 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
       case "unassigned": return t("event.unassigned", { detail: entry.detail });
       case "review_requested": return t("event.reviewRequested", { detail: entry.detail });
       case "review_request_removed": return t("event.reviewRequestRemoved", { detail: entry.detail });
-      default: return entry.eventType;
+      case "milestoned": return t("event.milestoned", { detail: entry.detail });
+      case "demilestoned": return t("event.demilestoned", { detail: entry.detail });
+      case "committed": return t("event.committed", { detail: entry.detail });
+      case "cross-referenced": return t("event.crossReferenced", { detail: entry.detail });
+      case "ready_for_review": return t("event.readyForReview");
+      case "convert_to_draft": return t("event.convertToDraft");
+      case "head_ref_force_pushed": return t("event.headRefForcePushed");
+      case "head_ref_deleted": return t("event.headRefDeleted");
+      case "connected": return t("event.connected");
+      case "auto_merge_enabled": return t("event.autoMergeEnabled");
+      default: return entry.eventType.replace(/_/g, " ");
     }
   }
 
@@ -114,13 +124,15 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
           );
         }
         const isReview = entry.kind === "review";
+        const isReviewComment = entry.kind === "review-comment";
         return (
-          <article className={isReview ? "thread-comment review" : "thread-comment"} key={index}>
+          <article className={isReview || isReviewComment ? "thread-comment review" : "thread-comment"} key={index}>
             <Avatar login={entry.actor?.login} size={28} />
             <div className="thread-comment-body">
               <div className="thread-comment-head">
                 <strong>{entry.actor?.login || "unknown"}</strong>
                 {isReview ? <span className={`thread-review-state ${entry.state.toLowerCase()}`}>{entry.state.toLowerCase()}</span> : null}
+                {isReviewComment && entry.path ? <span className="thread-review-path">{entry.path}</span> : null}
                 <em>{formatRelativeTime(entry.createdAt, Date.now(), language)}</em>
               </div>
               {entry.bodyHtml ? <div className="thread-body" dangerouslySetInnerHTML={{ __html: entry.bodyHtml }} /> : null}
