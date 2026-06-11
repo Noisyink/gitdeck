@@ -25,16 +25,16 @@ import { CommandPalette } from "./components/modals/CommandPalette";
 import { Footer } from "./components/Footer";
 import { TopBar } from "./components/TopBar";
 import { SidebarControls, type InboxSidebarState } from "./components/SidebarControls";
-import { Pagination } from "./components/common/Pagination";
-import { BoardIcon, BookIcon, ExportIcon, IssueIcon, PulseIcon } from "./components/common/Icons";
-import { IssueList } from "./components/views/IssueList";
-import { PullRequestList } from "./components/views/PullRequestList";
-import { DailyDigestView } from "./components/views/DailyDigestView";
-import { InsightsView } from "./components/views/InsightsView";
-import { RepoGrid } from "./components/views/RepoGrid";
-import { KanbanView } from "./components/views/KanbanView";
-import { CIHealthView } from "./components/views/CIHealthView";
-import { InboxView } from "./components/views/InboxView";
+import { BoardIcon, BookIcon, IssueIcon, PulseIcon } from "./components/common/Icons";
+import { InboxSection } from "./components/sections/InboxSection";
+import { IssuesSection } from "./components/sections/IssuesSection";
+import { PullRequestsSection } from "./components/sections/PullRequestsSection";
+import { ReposSection } from "./components/sections/ReposSection";
+import { InsightsSection } from "./components/sections/InsightsSection";
+import { AlertsSection } from "./components/sections/AlertsSection";
+import { CISection } from "./components/sections/CISection";
+import { DigestsSection } from "./components/sections/DigestsSection";
+import { KanbanSection } from "./components/sections/KanbanSection";
 import type {
   CIHealthData,
   DailyDigestEntry,
@@ -70,7 +70,6 @@ import {
 } from "./utils/dashboard";
 import { clampPage } from "./utils/pagination";
 import { buildInboxItems, INBOX_MAILBOXES, matchesInboxMailbox, mergeNotifications, type InboxMailbox } from "./utils/inbox";
-import { formatNumber } from "./utils/format";
 import { clearStatsCache, readStatsCache, writeStatsCache } from "./utils/statsCache";
 import { clearFiltersCache, hydrateFilters, readFiltersCache, writeFiltersCache } from "./utils/filtersCache";
 import { useI18n } from "./i18n/I18nProvider";
@@ -780,7 +779,7 @@ export function App() {
           </div>
 
           {tab === "inbox" ? (
-            <InboxView
+            <InboxSection
               items={mailboxItems}
               mailboxLabel={t(`mailbox.${mailbox}`)}
               search={inboxSearch}
@@ -796,195 +795,113 @@ export function App() {
           ) : null}
 
           {tab === "issues" ? (
-            <div className="view-issues" style={{ display: "block" }}>
-              <section className="stats">
-                <div className="stat"><div className="k">{t("stats.openIssues")}</div><div className="v">{formatNumber(filteredIssues.length)}</div><div className="sub">{t("stats.matchingFilters")}</div></div>
-                <div className="stat"><div className="k">{t("stats.repositories")}</div><div className="v">{new Set(filteredIssues.map((issue) => issue.repository.nameWithOwner)).size}</div><div className="sub">{t("stats.withOpenIssues")}</div></div>
-                <div className="stat"><div className="k">{t("stats.organizations")}</div><div className="v">{new Set(filteredIssues.map((issue) => issue.repository.nameWithOwner.split("/")[0])).size}</div><div className="sub">{t("stats.includingPersonal")}</div></div>
-                <div className="stat"><div className="k">{t("stats.stale30")}</div><div className="v">{filteredIssues.filter((issue) => Date.now() - new Date(issue.updatedAt).getTime() > 30 * 86_400_000).length}</div><div className="sub">{t("stats.noRecentActivity")}</div></div>
-              </section>
-              <div className="toolbar">
-                <span className="count-chip"><strong>{visibleIssues.length}</strong> {t("common.of")} <span>{filteredIssues.length}</span> {t("common.shown")}</span>
-                <div className="spacer" />
-                <label>{t("common.sort")}</label>
-                <select className="sort" value={issueSort} onChange={(event) => setIssueSort(event.target.value)}>
-                  <option value="updated_desc">{t("sort.recentlyUpdated")}</option>
-                  <option value="updated_asc">{t("sort.leastRecentlyUpdated")}</option>
-                  <option value="created_desc">{t("sort.newest")}</option>
-                  <option value="created_asc">{t("sort.oldest")}</option>
-                  <option value="comments_desc">{t("sort.mostCommented")}</option>
-                  <option value="comments_asc">{t("sort.leastCommented")}</option>
-                  <option value="repo_asc">{t("sort.repositoryAZ")}</option>
-                </select>
-                <button className="btn ghost" onClick={() => downloadJson("issues.json", filteredIssues)}><ExportIcon /> {t("common.export")}</button>
-              </div>
-              <IssueList issues={visibleIssues} />
-              <Pagination totalItems={filteredIssues.length} page={issuePageSafe} pageSize={issuePageSize} onPageChange={setIssuePage} onPageSizeChange={(size) => { setIssuePageSize(size); setIssuePage(1); }} />
-            </div>
+            <IssuesSection
+              t={t}
+              filteredIssues={filteredIssues}
+              visibleIssues={visibleIssues}
+              issueSort={issueSort}
+              issuePageSafe={issuePageSafe}
+              issuePageSize={issuePageSize}
+              onSortChange={setIssueSort}
+              onExport={() => downloadJson("issues.json", filteredIssues)}
+              onPageChange={setIssuePage}
+              onPageSizeChange={(size) => { setIssuePageSize(size); setIssuePage(1); }}
+            />
           ) : null}
 
           {tab === "prs" ? (
-            <div className="view-prs" style={{ display: "block" }}>
-              <section className="stats">
-                <div className="stat"><div className="k">{t("stats.openPrs")}</div><div className="v">{formatNumber(filteredPullRequests.length)}</div><div className="sub">{t("stats.matchingFilters")}</div></div>
-                <div className="stat"><div className="k">{t("stats.drafts")}</div><div className="v">{formatNumber(draftCount)}</div><div className="sub">{t("stats.acrossAllPrs")}</div></div>
-                <div className="stat"><div className="k">{t("stats.awaitingReview")}</div><div className="v">{formatNumber(awaitingReviewCount)}</div><div className="sub">{t("stats.noReviewYet")}</div></div>
-                <div className="stat"><div className="k">{t("stats.approved")}</div><div className="v">{formatNumber(approvedCount)}</div><div className="sub">{t("stats.readyToMerge")}</div></div>
-                <div className="stat"><div className="k">{t("stats.stale14")}</div><div className="v">{formatNumber(stalePrCount)}</div><div className="sub">{t("stats.noRecentActivity")}</div></div>
-              </section>
-              <div className="toolbar">
-                <span className="count-chip"><strong>{visiblePullRequests.length}</strong> {t("common.of")} <span>{filteredPullRequests.length}</span> {t("common.shown")}</span>
-                <div className="spacer" />
-                <label>{t("common.preset")}</label>
-                <select className="sort" value={prFilters.preset} onChange={(event) => { setPrFilters({ ...prFilters, preset: event.target.value }); setPrPage(1); }}>
-                  <option value="">{t("common.all")}</option>
-                  <option value="ready">{t("preset.ready")}</option>
-                  <option value="draft">{t("preset.draft")}</option>
-                  <option value="awaiting-review">{t("preset.awaitingReview")}</option>
-                  <option value="approved">{t("preset.approved")}</option>
-                  <option value="changes-requested">{t("preset.changesRequested")}</option>
-                  <option value="assigned-me">{t("preset.assignedMe")}</option>
-                  <option value="authored-me">{t("preset.authoredMe")}</option>
-                  <option value="stale">{t("preset.stale")}</option>
-                </select>
-                <label>{t("common.sort")}</label>
-                <select className="sort" value={prSort} onChange={(event) => setPrSort(event.target.value)}>
-                  <option value="updated_desc">{t("sort.recentlyUpdated")}</option>
-                  <option value="updated_asc">{t("sort.leastRecentlyUpdated")}</option>
-                  <option value="created_desc">{t("sort.newest")}</option>
-                  <option value="created_asc">{t("sort.oldest")}</option>
-                  <option value="review_pending">{t("sort.awaitingReviewFirst")}</option>
-                  <option value="size_desc">{t("sort.largestDiff")}</option>
-                  <option value="size_asc">{t("sort.smallestDiff")}</option>
-                  <option value="files_desc">{t("sort.mostFilesChanged")}</option>
-                  <option value="comments_desc">{t("sort.mostCommented")}</option>
-                  <option value="repo_asc">{t("sort.repositoryAZ")}</option>
-                </select>
-                <button className="btn ghost" onClick={() => downloadJson("pull-requests.json", filteredPullRequests)}><ExportIcon /> {t("common.export")}</button>
-              </div>
-              <PullRequestList pullRequests={visiblePullRequests} />
-              <Pagination totalItems={filteredPullRequests.length} page={prPageSafe} pageSize={prPageSize} onPageChange={setPrPage} onPageSizeChange={(size) => { setPrPageSize(size); setPrPage(1); }} />
-            </div>
+            <PullRequestsSection
+              t={t}
+              filteredPullRequests={filteredPullRequests}
+              visiblePullRequests={visiblePullRequests}
+              draftCount={draftCount}
+              awaitingReviewCount={awaitingReviewCount}
+              approvedCount={approvedCount}
+              stalePrCount={stalePrCount}
+              prFilters={prFilters}
+              prSort={prSort}
+              prPageSafe={prPageSafe}
+              prPageSize={prPageSize}
+              onPresetChange={(preset) => { setPrFilters({ ...prFilters, preset }); setPrPage(1); }}
+              onSortChange={setPrSort}
+              onExport={() => downloadJson("pull-requests.json", filteredPullRequests)}
+              onPageChange={setPrPage}
+              onPageSizeChange={(size) => { setPrPageSize(size); setPrPage(1); }}
+            />
           ) : null}
 
           {tab === "repos" ? (
-            <div className="view-repos" style={{ display: "block" }}>
-              <section className="stats">
-                <div className="stat"><div className="k">{t("stats.repositories")}</div><div className="v">{formatNumber(filteredRepos.length)}</div><div className="sub">{t("stats.matchingFilters")}</div></div>
-                <div className="stat"><div className="k">{t("stats.totalStars")}</div><div className="v">{formatNumber(mineStars)}</div><div className="sub">{t("stats.yoursUpstream", { count: formatNumber(upstreamStars) })}</div></div>
-                <div className="stat"><div className="k">{t("stats.totalForks")}</div><div className="v">{formatNumber(mineForks)}</div><div className="sub">{t("stats.yoursUpstream", { count: formatNumber(upstreamForks) })}</div></div>
-                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(averageHealth)}</div><div className="sub">{t("stats.acrossYourRepos")}</div></div>
-              </section>
-              <div className="toolbar">
-                <span className="count-chip"><strong>{visibleRepos.length}</strong> {t("common.of")} <span>{filteredRepos.length}</span> {t("common.shown")}</span>
-                <div className="spacer" />
-                <div className="owner-toggle" role="group" aria-label={t("repos.ownership.label")}>
-                  {(["both", "owned", "non-owned"] as RepoOwnership[]).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      className={`seg ${repoOwnership === opt ? "active" : ""}`}
-                      onClick={() => { setRepoOwnership(opt); setRepoPage(1); }}
-                    >
-                      {t(opt === "both" ? "repos.ownership.both" : opt === "owned" ? "repos.ownership.owned" : "repos.ownership.nonOwned")}
-                    </button>
-                  ))}
-                </div>
-                <label>{t("common.sort")}</label>
-                <select className="sort" value={repoSort} onChange={(event) => setRepoSort(event.target.value)}>
-                  <option value="stars_desc">{t("sort.mostStars")}</option>
-                  <option value="stars_asc">{t("sort.fewestStars")}</option>
-                  <option value="forks_desc">{t("sort.mostForks")}</option>
-                  <option value="forks_asc">{t("sort.fewestForks")}</option>
-                  <option value="issues_desc">{t("sort.mostOpenIssues")}</option>
-                  <option value="issues_asc">{t("sort.fewestOpenIssues")}</option>
-                  <option value="health_desc">{t("sort.bestHealth")}</option>
-                  <option value="health_asc">{t("sort.mostAtRisk")}</option>
-                  <option value="pushed_desc">{t("sort.recentlyPushed")}</option>
-                  <option value="updated_desc">{t("sort.recentlyUpdated")}</option>
-                  <option value="name_asc">{t("sort.nameAZ")}</option>
-                </select>
-                <button className="btn ghost" onClick={() => downloadJson("repositories.json", filteredRepos)}><ExportIcon /> {t("common.export")}</button>
-              </div>
-              <RepoGrid
-                repos={visibleRepos}
-                issues={issues}
-                insightsByRepo={insightsByRepo}
-                onRepoClick={openRepoModal}
-                onIssuesClick={(repo) => { setIssueFilters({ ...issueFilters, repos: new Set([repo]) }); navigateTab("issues"); }}
-                onStarsClick={(repo) => openMetricModal(repo, "stars")}
-                onForksClick={(repo) => openMetricModal(repo, "forks")}
-              />
-              <Pagination totalItems={filteredRepos.length} page={repoPageSafe} pageSize={repoPageSize} onPageChange={setRepoPage} onPageSizeChange={(size) => { setRepoPageSize(size); setRepoPage(1); }} />
-            </div>
+            <ReposSection
+              t={t}
+              filteredRepos={filteredRepos}
+              visibleRepos={visibleRepos}
+              issues={issues}
+              insightsByRepo={insightsByRepo}
+              mineStars={mineStars}
+              upstreamStars={upstreamStars}
+              mineForks={mineForks}
+              upstreamForks={upstreamForks}
+              averageHealth={averageHealth}
+              repoOwnership={repoOwnership}
+              repoSort={repoSort}
+              repoPageSafe={repoPageSafe}
+              repoPageSize={repoPageSize}
+              onOwnershipChange={(opt) => { setRepoOwnership(opt); setRepoPage(1); }}
+              onSortChange={setRepoSort}
+              onRepoClick={openRepoModal}
+              onIssuesClick={(repo) => { setIssueFilters({ ...issueFilters, repos: new Set([repo]) }); navigateTab("issues"); }}
+              onStarsClick={(repo) => openMetricModal(repo, "stars")}
+              onForksClick={(repo) => openMetricModal(repo, "forks")}
+              onExport={() => downloadJson("repositories.json", filteredRepos)}
+              onPageChange={setRepoPage}
+              onPageSizeChange={(size) => { setRepoPageSize(size); setRepoPage(1); }}
+            />
           ) : null}
 
           {tab === "insights" ? (
-            <div className="view-insights" style={{ display: "block" }}>
-              <section className="stats">
-                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(averageHealth)}</div><div className="sub">{t("stats.acrossYourRepos")}</div></div>
-                <div className="stat"><div className="k">{t("stats.alertCount")}</div><div className="v">{formatNumber(totalAlerts)}</div><div className="sub">{t("stats.activeRisksDetected")}</div></div>
-                <div className="stat"><div className="k">{t("stats.reposWithInsights")}</div><div className="v">{formatNumber(filteredInsights.length)}</div><div className="sub">{t("stats.alertsOpportunitiesCorrelations")}</div></div>
-                <div className="stat"><div className="k">{t("stats.atRiskRepos")}</div><div className="v">{formatNumber(repoInsights.filter((insight) => insight.healthLabel === "risky").length)}</div><div className="sub">{t("stats.healthScoreUnder55")}</div></div>
-              </section>
-              <InsightsView insights={filteredInsights} reposByName={reposByName} onRepoClick={openRepoModal} />
-            </div>
+            <InsightsSection
+              t={t}
+              filteredInsights={filteredInsights}
+              reposByName={reposByName}
+              averageHealth={averageHealth}
+              totalAlerts={totalAlerts}
+              repoInsightsRiskyCount={repoInsights.filter((insight) => insight.healthLabel === "risky").length}
+              onRepoClick={openRepoModal}
+            />
           ) : null}
 
           {tab === "alerts" ? (
-            <div className="view-alerts" style={{ display: "block" }}>
-              <section className="stats">
-                <div className="stat"><div className="k">{t("alerts.totalAlerts")}</div><div className="v">{formatNumber(totalSecurityAlerts)}</div><div className="sub">{t("alerts.affectedRepos", { count: formatNumber(securityRepoCount) })}</div></div>
-                <div className="stat"><div className="k">{t("alerts.reposWithAlerts")}</div><div className="v">{formatNumber(securityRepoCount)}</div><div className="sub">{t("alerts.securityFocusedView")}</div></div>
-                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(securityAverageHealth)}</div><div className="sub">{t("alerts.acrossSecurityRepos")}</div></div>
-                <div className="stat"><div className="k">{t("stats.alertCount")}</div><div className="v">{formatNumber(securityInsightsAlertCount)}</div><div className="sub">{t("alerts.repoInsightAlerts")}</div></div>
-              </section>
-              <InsightsView
-                insights={securityInsights}
-                reposByName={reposByName}
-                onRepoClick={openRepoModal}
-                emptyTitleKey="alerts.emptyTitle"
-                emptyTextKey="alerts.emptyText"
-              />
-            </div>
+            <AlertsSection
+              t={t}
+              securityInsights={securityInsights}
+              reposByName={reposByName}
+              totalSecurityAlerts={totalSecurityAlerts}
+              securityRepoCount={securityRepoCount}
+              securityAverageHealth={securityAverageHealth}
+              securityInsightsAlertCount={securityInsightsAlertCount}
+              onRepoClick={openRepoModal}
+            />
           ) : null}
 
           {tab === "ci" ? (
-            (() => {
-              const totalRuns = ciHealth.reduce((sum, entry) => sum + entry.totalRuns, 0);
-              const totalFailures = ciHealth.reduce((sum, entry) => sum + entry.failureCount, 0);
-              const failingRepos = ciHealth.filter((entry) => entry.failureCount > 0).length;
-              const decided = ciHealth.reduce((sum, entry) => sum + entry.successCount + entry.failureCount, 0);
-              const successes = ciHealth.reduce((sum, entry) => sum + entry.successCount, 0);
-              const avgSuccessPct = decided ? Math.round((successes / decided) * 100) : 0;
-              return (
-                <div className="view-ci" style={{ display: "block" }}>
-                  <section className="stats">
-                    <div className="stat"><div className="k">{t("stats.reposWithCi")}</div><div className="v">{formatNumber(ciHealth.length)}</div><div className="sub">{t("stats.recentWorkflowRuns")}</div></div>
-                    <div className="stat"><div className="k">{t("stats.totalRuns")}</div><div className="v">{formatNumber(totalRuns)}</div><div className="sub">{t("stats.lastRunsPerRepo", { count: ciHealth[0]?.totalRuns ?? 30 })}</div></div>
-                    <div className="stat"><div className="k">{t("stats.avgSuccess")}</div><div className="v">{avgSuccessPct}%</div><div className="sub">{t("stats.acrossDecidedRuns")}</div></div>
-                    <div className="stat"><div className="k">{t("stats.failingRepos")}</div><div className="v">{formatNumber(failingRepos)}</div><div className="sub">{t("stats.failuresTotal", { count: formatNumber(totalFailures) })}</div></div>
-                  </section>
-                  <CIHealthView data={ciHealth} reposByName={reposByName} onRepoClick={openRepoModal} />
-                </div>
-              );
-            })()
+            <CISection
+              t={t}
+              ciHealth={ciHealth}
+              reposByName={reposByName}
+              onRepoClick={openRepoModal}
+            />
           ) : null}
 
           {tab === "digests" ? (
-            <div className="view-digests" style={{ display: "block" }}>
-              <section className="stats">
-                <div className="stat"><div className="k">{digestPeriod === "day" ? t("stats.digestDays") : digestPeriod === "week" ? t("stats.digestWeeks") : t("stats.digestMonths")}</div><div className="v">{formatNumber(dailyDigests.length)}</div><div className="sub">{digestPeriod === "day" ? t("stats.daysWithSavedSnapshots") : t("stats.periodsAggregated")}</div></div>
-                <div className="stat"><div className="k">{t("stats.latestIssueDelta")}</div><div className="v">{dailyDigests[0] ? `${dailyDigests[0].issueDelta >= 0 ? "+" : ""}${formatNumber(dailyDigests[0].issueDelta)}` : "0"}</div><div className="sub">{t("stats.vsPrevious", { period: digestPeriod === "day" ? t("period.day") : t(`period.${digestPeriod}`) })}</div></div>
-                <div className="stat"><div className="k">{t("stats.latestStarsDelta")}</div><div className="v">{dailyDigests[0] ? `${dailyDigests[0].starsDelta >= 0 ? "+" : ""}${formatNumber(dailyDigests[0].starsDelta)}` : "0"}</div><div className="sub">{t("stats.vsPrevious", { period: digestPeriod === "day" ? t("period.day") : t(`period.${digestPeriod}`) })}</div></div>
-                <div className="stat"><div className="k">{t("stats.latestStaleDelta")}</div><div className="v">{dailyDigests[0] ? `${dailyDigests[0].staleIssueDelta >= 0 ? "+" : ""}${formatNumber(dailyDigests[0].staleIssueDelta)}` : "0"}</div><div className="sub">{t("stats.vsPrevious", { period: digestPeriod === "day" ? t("period.day") : t(`period.${digestPeriod}`) })}</div></div>
-                <div className="stat"><div className="k">{t("alerts.totalAlerts")}</div><div className="v">{dailyDigests[0] ? formatNumber(dailyDigests[0].securityAlertsCount) : "0"}</div><div className="sub">{dailyDigests[0] ? t("digest.securityRepos", { count: formatNumber(dailyDigests[0].securityReposCount) }) : t("digest.securityUnavailable")}</div></div>
-              </section>
-              <DailyDigestView digests={dailyDigests} period={digestPeriod} onPeriodChange={setDigestPeriod} />
-            </div>
+            <DigestsSection
+              t={t}
+              dailyDigests={dailyDigests}
+              digestPeriod={digestPeriod}
+              onPeriodChange={setDigestPeriod}
+            />
           ) : null}
 
-          {tab === "kanban" && projectsEnabled ? <KanbanView /> : null}
+          {tab === "kanban" && projectsEnabled ? <KanbanSection /> : null}
         </main>
       </div>
       <Footer
