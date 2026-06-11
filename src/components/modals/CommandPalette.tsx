@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GhIssue, GhPullRequest, GhRepo } from "../../types/github";
 
 export type PaletteTab =
-  | "inbox"
   | "repos"
   | "issues"
   | "prs"
@@ -35,7 +34,6 @@ interface Entry {
 }
 
 const TAB_DEFS: { key: PaletteTab; label: string }[] = [
-  { key: "inbox", label: "Inbox" },
   { key: "repos", label: "Repositories" },
   { key: "issues", label: "Issues" },
   { key: "prs", label: "Pull Requests" },

@@ -6,13 +6,10 @@ import {
   fetchCIHealth,
   fetchDailyDigests,
   fetchIssues,
-  fetchNotifications,
   fetchPullRequests,
   fetchRepoInsights,
   fetchRepos,
   logoutAuth,
-  markAllNotificationsRead,
-  markNotificationRead,
 } from "./api/github";
 import { invalidate as invalidateCache, peek, swr } from "./api/cache";
 import { AuthGate } from "./components/AuthGate";
@@ -24,13 +21,12 @@ import { WelcomeModal } from "./components/modals/WelcomeModal";
 import { CommandPalette } from "./components/modals/CommandPalette";
 import { Footer } from "./components/Footer";
 import { TopBar } from "./components/TopBar";
-import { SidebarControls, type InboxSidebarState } from "./components/SidebarControls";
+import { SidebarControls } from "./components/SidebarControls";
 import { Pagination } from "./components/common/Pagination";
 import { BoardIcon, BookIcon, ExportIcon, IssueIcon, PulseIcon } from "./components/common/Icons";
 import { IssueList } from "./components/views/IssueList";
 import { PullRequestList } from "./components/views/PullRequestList";
 import { DailyDigestView } from "./components/views/DailyDigestView";
-import { InboxView } from "./components/views/InboxView";
 import { InsightsView } from "./components/views/InsightsView";
 import { RepoGrid } from "./components/views/RepoGrid";
 import { KanbanView } from "./components/views/KanbanView";
@@ -41,7 +37,6 @@ import type {
   DailyDigestsData,
   DigestPeriod,
   GhIssue,
-  GhNotification,
   GhPullRequest,
   GhRepo,
   IssuesData,
@@ -51,7 +46,6 @@ import type {
   RepoInsightsData,
   ReposData,
 } from "./types/github";
-import { buildInboxItems, INBOX_MAILBOXES, matchesInboxMailbox, mergeNotifications, type InboxMailbox } from "./utils/inbox";
 import {
   buildIssueFacets,
   buildPullRequestFacets,
@@ -76,12 +70,11 @@ import { clearFiltersCache, hydrateFilters, readFiltersCache, writeFiltersCache 
 import { useI18n } from "./i18n/I18nProvider";
 import { useAccounts, useCapability } from "./contexts/AccountContext";
 
-type Tab = "inbox" | "repos" | "issues" | "prs" | "kanban" | "insights" | "alerts" | "ci" | "digests";
+type Tab = "repos" | "issues" | "prs" | "kanban" | "insights" | "alerts" | "ci" | "digests";
 type Theme = "dark" | "light" | "auto";
 type TextSize = "small" | "normal" | "large";
 
 const TAB_ROUTES: Record<Tab, string> = {
-  inbox: "/inbox",
   repos: "/repositories",
   issues: "/issues",
   prs: "/pull-requests",
@@ -202,12 +195,6 @@ export function App() {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(() => !localStorage.getItem("gh-dash.welcomeSeen"));
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [notifications, setNotifications] = useState<GhNotification[]>([]);
-  const [pollInterval, setPollInterval] = useState(60);
-  const [mailbox, setMailbox] = useState<InboxMailbox>("inbox");
-  const [inboxPage, setInboxPage] = useState(1);
-  const [inboxPageSize, setInboxPageSize] = useState(Number(localStorage.getItem("gh-dash.inboxPageSize")) || 20);
-  const [inboxSearch, setInboxSearch] = useState("");
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("gh-dash.theme") as Theme) || "dark");
   const [textSize, setTextSize] = useState<TextSize>(() => (localStorage.getItem("gh-dash.textSize") as TextSize) || "normal");
   const [issueFilters, setIssueFilters] = useState<IssueFilters>(() => cachedFiltersOnMount?.hydrated.issueFilters ?? defaultIssueFilters());
@@ -348,7 +335,6 @@ export function App() {
     setRepoInsights([]);
     setDailyDigests([]);
     setCiHealth([]);
-    setNotifications([]);
     setFetchedAt("");
     clearStatsCache();
     loadData(true);
@@ -456,7 +442,6 @@ export function App() {
   }, [textSize]);
 
   useEffect(() => {
-    document.body.classList.toggle("tab-inbox", tab === "inbox");
     document.body.classList.toggle("tab-issues", tab === "issues");
     document.body.classList.toggle("tab-prs", tab === "prs");
     document.body.classList.toggle("tab-repos", tab === "repos");
@@ -495,77 +480,8 @@ export function App() {
   useEffect(() => localStorage.setItem("gh-dash.issuesPageSize", String(issuePageSize)), [issuePageSize]);
   useEffect(() => localStorage.setItem("gh-dash.prsPageSize", String(prPageSize)), [prPageSize]);
   useEffect(() => localStorage.setItem("gh-dash.reposPageSize", String(repoPageSize)), [repoPageSize]);
-  useEffect(() => localStorage.setItem("gh-dash.inboxPageSize", String(inboxPageSize)), [inboxPageSize]);
-
-  const refreshNotifications = useCallback(async (fresh = false) => {
-    try {
-      const data = await fetchNotifications(fresh);
-      setNotifications(data.notifications);
-      if (data.pollInterval) setPollInterval(data.pollInterval);
-    } catch {
-      // silent — Inbox still works without notifications
-    }
-  }, []);
-
-  useEffect(() => {
-    if (authState !== "authenticated") return;
-    void refreshNotifications(true);
-  }, [authState, activeAccountId, refreshNotifications]);
-
-  useEffect(() => {
-    if (authState !== "authenticated" || !pollInterval) return;
-    const id = window.setInterval(() => { void refreshNotifications(); }, Math.max(30, pollInterval) * 1000);
-    return () => window.clearInterval(id);
-  }, [authState, pollInterval, refreshNotifications]);
-
-  const handleMarkRead = useCallback(async (threadId: string) => {
-    setNotifications((prev) => prev.map((entry) => (entry.id === threadId ? { ...entry, unread: false } : entry)));
-    try {
-      await markNotificationRead(threadId);
-    } catch {
-      void refreshNotifications(true);
-    }
-  }, [refreshNotifications]);
 
   const userLoginValue = owners[0] || "";
-  const inboxItems = useMemo(() => {
-    const base = buildInboxItems({ issues, pullRequests, userLogin: userLoginValue });
-    return mergeNotifications(base, notifications);
-  }, [issues, pullRequests, userLoginValue, notifications]);
-  const mailboxItems = useMemo(
-    () => inboxItems.filter((item) => matchesInboxMailbox(item, mailbox)),
-    [inboxItems, mailbox],
-  );
-  const inboxCounts = useMemo(() => {
-    const counts: Record<InboxMailbox, number> = {} as Record<InboxMailbox, number>;
-    for (const entry of INBOX_MAILBOXES) {
-      counts[entry.key] = inboxItems.filter((item) => matchesInboxMailbox(item, entry.key)).length;
-    }
-    return counts;
-  }, [inboxItems]);
-  const inboxUnreadCount = useMemo(() => inboxItems.filter((item) => item.unread).length, [inboxItems]);
-
-  const handleMarkAllRead = useCallback(async () => {
-    if (!inboxUnreadCount) return;
-    if (!window.confirm(t("confirm.markAllRead", { count: inboxUnreadCount, plural: inboxUnreadCount === 1 ? "" : "s" }))) return;
-    const previous = notifications;
-    setNotifications((prev) => prev.map((entry) => ({ ...entry, unread: false })));
-    try {
-      await markAllNotificationsRead();
-    } catch {
-      setNotifications(previous);
-    }
-  }, [inboxUnreadCount, notifications]);
-
-  const inboxSidebar: InboxSidebarState = {
-    mailbox,
-    counts: inboxCounts,
-    totalCount: inboxItems.length,
-    unreadCount: inboxUnreadCount,
-    onMailboxChange: (next) => { setMailbox(next); setInboxPage(1); },
-    onMarkAllRead: () => void handleMarkAllRead(),
-  };
-
   // Persist sidebar filters and sort order to localStorage
   useEffect(() => {
     writeFiltersCache(repoFilters, issueFilters, prFilters, { issueSort, prSort, repoSort });
@@ -643,13 +559,11 @@ export function App() {
   }
 
   const search =
-    tab === "inbox"
-      ? inboxSearch
-      : tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests"
-        ? repoFilters.search
-        : tab === "prs"
-          ? prFilters.search
-          : issueFilters.search;
+    tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests"
+      ? repoFilters.search
+      : tab === "prs"
+        ? prFilters.search
+        : issueFilters.search;
   const subtitle = [
     t("summary.issues", { count: issues.length }),
     t("summary.prs", { count: pullRequests.length }),
@@ -661,10 +575,7 @@ export function App() {
   const lastUpdated = fetchedAt ? t("common.updatedAt", { time: new Date(fetchedAt).toLocaleTimeString() }) : "";
 
   function setSearch(value: string) {
-    if (tab === "inbox") {
-      setInboxSearch(value);
-      setInboxPage(1);
-    } else if (tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests") {
+    if (tab === "repos" || tab === "insights" || tab === "alerts" || tab === "digests") {
       setRepoFilters({ ...repoFilters, search: value });
       setRepoPage(1);
     } else if (tab === "prs") {
@@ -713,9 +624,6 @@ export function App() {
   }
 
   const tabs = [
-    // Noisyink fork: Inbox tab hidden — it is notification-driven and the
-    // Notifications API 403s without a `notifications`-scoped token. The view code
-    // and /inbox route remain; only the nav button is removed.
     { key: "repos" as const, label: t("tabs.repositories"), count: repos.length, icon: <BookIcon /> },
     { key: "issues" as const, label: t("tabs.issues"), count: issues.length, icon: <IssueIcon /> },
     { key: "prs" as const, label: t("tabs.pullRequests"), count: pullRequests.length, icon: <PulseIcon /> },
@@ -764,7 +672,6 @@ export function App() {
           onReset={resetFilters}
           onClose={() => setFiltersOpen(false)}
           authLogin={authLogin || undefined}
-          inbox={inboxSidebar}
         />
         <main className={`main${dataStale ? " data-stale" : ""}`}>
           {error ? <div className="error">{error}</div> : null}
@@ -778,22 +685,6 @@ export function App() {
               ))}
             </div>
           </div>
-
-          {tab === "inbox" ? (
-            <InboxView
-              items={mailboxItems}
-              mailboxLabel={t(`mailbox.${mailbox}`)}
-              search={inboxSearch}
-              page={inboxPage}
-              pageSize={inboxPageSize}
-              reposByName={reposByName}
-              onRepoClick={openRepoModal}
-              onMarkRead={(threadId) => void handleMarkRead(threadId)}
-              onRefresh={() => void refreshNotifications(true)}
-              onPageChange={setInboxPage}
-              onPageSizeChange={(size) => { setInboxPageSize(size); setInboxPage(1); }}
-            />
-          ) : null}
 
           {tab === "issues" ? (
             <div className="view-issues" style={{ display: "block" }}>
