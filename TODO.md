@@ -33,13 +33,15 @@ Personal-fork backlog for `Noisyink/gitdeck`. Running on the home server at `:87
       and test-gap gates. Reviewer's 3 fix-now items (Anthropic error proxy + timeout,
       ReplyBox confirm snapshot) are **fixed**; the during-rewrite items (F-03/04/06-10)
       are folded into the slice plan.
-- [~] Execute the **hand rewrite** per `REWRITE-REVIEW.md` — **slices 1-5 done**
-      (deleted `tokenStore`, OpenAI digest, the Inbox/notifications stack, and
-      collapsed the two-forge provider seam to GitHub-only; 22 characterization
-      tests added for the fork provider methods; 90 tests green; live + verified).
-      **Remaining: slices 6-8** (server.ts dedup → server.ts split into handlers →
-      App.tsx split) — the monolith refactors; need route-level characterization
-      tests before 6/7.
+- [x] **Hand rewrite COMPLETE** (all 8 slices per `REWRITE-REVIEW.md`): deleted
+      `tokenStore` + OpenAI digest; collapsed the two-forge provider seam to
+      GitHub-only; deduped + split `server.ts` 1306→172-line router + `handlers/`;
+      split `App.tsx` 1046→963 + `sections/`. Test coverage 15→154 (provider fork
+      methods, all routes, notifications). All gated tsc+test green, live + verified.
+- [x] **Inbox restored** as a non-default tab (repos stays the landing page) — it
+      works now that the deployed token has `repo` scope (Notifications API returns
+      data). Reverted the earlier slice-3/4 cut on user request ("liked it, just not
+      primary").
 
 ## New server / migration (cross-ref `../migration/TODO.md`, blocked on K8 Plus hardware)
 - [ ] Fold gitdeck into the **services-guest** stack behind **Caddy** (+ likely
