@@ -152,7 +152,7 @@ export type ThreadEntry =
   | { kind: "event"; actor: ThreadActor | null; createdAt: string; eventType: string; detail: string };
 
 export type ThreadData =
-  | { ok: true; item: ThreadItem; entries: ThreadEntry[] }
+  | { ok: true; item: ThreadItem; entries: ThreadEntry[]; truncated?: boolean }
   | { ok: false; status: number; error: string; needsAuth?: true };
 
 export interface Provider {

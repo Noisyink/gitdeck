@@ -993,6 +993,8 @@
   .thread-event em { font-style: normal; margin-left: 4px; }
   .thread .reply-box { margin: 4px 0 0 0; }
   .thread .reply-toggle { margin: 4px 0 0 0; }
+  .thread-truncated { font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .thread-truncated a { color: var(--accent); }
 
   /* Noisyink fork: Claude summary card in the thread. */
   .thread-summary { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-faint); }
@@ -1010,3 +1012,4 @@
   .preferences-key-row input { flex: 1; min-width: 0; }
   .preferences-key-row button { background: var(--accent); color: #08110f; border: 0; border-radius: 6px; padding: 0 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
   .preferences-key-row button:disabled { opacity: .5; cursor: not-allowed; }
+  .preferences-key-row .preferences-clear { background: transparent; border: 1px solid var(--border); color: var(--muted); font-weight: 400; }

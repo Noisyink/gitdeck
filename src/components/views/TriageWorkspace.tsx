@@ -79,7 +79,7 @@ function LabelPills({ item }: { item: InboxItem }) {
   return (
     <div className="inbox-labels">
       {item.labels.map((label) => {
-        const vars = getLabelCssVars(label.color);
+        const vars = getLabelCssVars(label.color ?? "");
         return (
           <span
             className={vars ? "inbox-label gh-label" : "inbox-label"}

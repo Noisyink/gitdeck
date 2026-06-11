@@ -53,7 +53,7 @@ export function TopBar({
     fetchSettings().then((res) => setSettings(res.settings)).catch(() => setSettings(null));
   }, [preferencesOpen, settings]);
 
-  async function patchSettings(patch: Partial<{ anthropicApiKey: string; summaryModel: string; summaryEnabled: boolean; contribFilter: string }>) {
+  async function patchSettings(patch: Partial<{ anthropicApiKey: string; summaryModel: string; summaryEnabled: boolean; contribFilter: string; clearAnthropicKey: boolean }>) {
     try {
       const res = await updateSettings(patch);
       setSettings(res.settings);
@@ -167,6 +167,9 @@ export function TopBar({
                     onChange={(event) => setApiKeyInput(event.target.value)}
                   />
                   <button type="button" disabled={!apiKeyInput.trim()} onClick={() => patchSettings({ anthropicApiKey: apiKeyInput.trim() })}>{t("preferences.save")}</button>
+                  {settings?.anthropicConfigured ? (
+                    <button type="button" className="preferences-clear" onClick={() => patchSettings({ clearAnthropicKey: true })}>{t("preferences.clear")}</button>
+                  ) : null}
                 </span>
               </label>
               <label className="preferences-field">

@@ -74,10 +74,12 @@ export async function getContribFilter(): Promise<string> {
   return settings.contribFilter || process.env.GH_DASH_FILTER?.trim() || "author:@me";
 }
 
-export async function updateSettings(patch: Partial<Settings>): Promise<PublicSettings> {
+export async function updateSettings(patch: Partial<Settings> & { clearAnthropicKey?: boolean }): Promise<PublicSettings> {
   const next: Settings = { ...(await load()) };
-  // Only overwrite the key when a non-empty value is supplied (never clears on save).
-  if (typeof patch.anthropicApiKey === "string" && patch.anthropicApiKey.trim()) next.anthropicApiKey = patch.anthropicApiKey.trim();
+  // Explicit clear (rotation/removal), else only overwrite when a non-empty value
+  // is supplied (so a normal save doesn't wipe the stored key).
+  if (patch.clearAnthropicKey === true) next.anthropicApiKey = "";
+  else if (typeof patch.anthropicApiKey === "string" && patch.anthropicApiKey.trim()) next.anthropicApiKey = patch.anthropicApiKey.trim();
   if (isSummaryModel(patch.summaryModel)) next.summaryModel = patch.summaryModel;
   if (typeof patch.summaryEnabled === "boolean") next.summaryEnabled = patch.summaryEnabled;
   if (typeof patch.contribFilter === "string") next.contribFilter = patch.contribFilter.trim();

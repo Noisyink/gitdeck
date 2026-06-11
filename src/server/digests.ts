@@ -45,7 +45,7 @@ export async function recordDailyDigest(repos: GhRepo[], issues: GhIssue[]): Pro
       }
     }),
   );
-  const today = buildDailyDigestRecord(repos, issues, Date.now(), new Map(securityEntries.map(([repo, summary]) => [repo, summary])));
+  const today = buildDailyDigestRecord(repos, issues, Date.now(), new Map(securityEntries.map(([repo, summary]) => [repo, { securityAlertsCount: summary.totalOpen, securityAlertsUnavailable: summary.unavailable }])));
   const existing = digests.find((entry) => entry.date === today.date);
   if (existing) {
     Object.assign(existing, today);

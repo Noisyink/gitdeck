@@ -28,11 +28,11 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
       .catch(() => setSettings(null));
   }, []);
 
-  async function runSummary(model: string) {
+  async function runSummary(model: string, fresh: boolean) {
     setSummarizing(true);
     setSummaryError("");
     try {
-      const res = await summarizeThread(repo, number, model);
+      const res = await summarizeThread(repo, number, model, fresh);
       setSummary(res.summary);
     } catch (err) {
       setSummaryError((err as Error).message || t("summary.error"));
@@ -77,7 +77,7 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
       {settings?.summaryEnabled && settings?.anthropicConfigured ? (
         <div className="thread-summary">
           <div className="thread-summary-bar">
-            <button type="button" className="summary-btn" disabled={summarizing} onClick={() => runSummary(summaryModel)}>
+            <button type="button" className="summary-btn" disabled={summarizing} onClick={() => runSummary(summaryModel, Boolean(summary))}>
               {summarizing ? t("summary.busy") : summary ? t("summary.regenerate") : t("summary.button")}
             </button>
             <select className="summary-model" value={summaryModel} disabled={summarizing} onChange={(event) => setSummaryModel(event.target.value)}>
@@ -129,6 +129,11 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
         );
       })}
 
+      {data.truncated ? (
+        <div className="thread-truncated">
+          {t("thread.truncated")} <a href={data.item.url} target="_blank" rel="noreferrer">{t("thread.openGithub")}</a>
+        </div>
+      ) : null}
       <ReplyBox repo={repo} number={number} startOpen onPosted={() => setReloadKey((key) => key + 1)} />
     </div>
   );

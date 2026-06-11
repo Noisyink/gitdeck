@@ -1,50 +1,40 @@
 # Gitdeck fork — backlog
 
-Personal-fork backlog for `Noisyink/gitdeck`. Captured 2026-06-11. Nothing here is
-blocking; the dashboard is fully working on the home server at `:8766`.
+Personal-fork backlog for `Noisyink/gitdeck`. Running on the home server at `:8766`.
 
-## Your action (not code)
-- [ ] Mint an Anthropic API key (console.anthropic.com) and enter it in
-      Preferences → Claude to enable thread summaries. Pay-per-token (~0.5c/Haiku
-      summary); a Pro/Max subscription cannot back it.
+## Done (2026-06-11 sweep)
+- [x] Fixed the 4 pre-existing upstream `tsc` errors — `npm run typecheck` and the
+      test suite now pass clean.
+- [x] Hid the Notifications (Inbox) nav tab — it 403s without a `notifications`
+      token; the view code and `/inbox` route remain, only the button is gone.
+- [x] **Summary caching** — the last Claude summary per (repo, number, model) is
+      cached server-side (`summaries.json`); re-opening a thread is free, and
+      "Regenerate" (`fresh`) is the only path that re-bills.
+- [x] Long-timeline handling — `fetchThread` flags `truncated` at 100 events and
+      the thread shows "Showing the first 100 events. Open in GitHub." (Full
+      append-pagination was judged disproportionate; the Open-in-GitHub button is
+      the escape hatch for very long threads.)
+- [x] Ownership toggle now persists (localStorage) so your owned/non-owned/both
+      choice is the default across reloads.
+- [x] Clear/rotate the Anthropic key from Preferences (Clear button + server clear
+      path). GitHub-token rotation is still via the existing add-token flow.
 
-## Cleanup / hygiene
-- [ ] Fix the 4 pre-existing **upstream** `tsc --noEmit` errors so `npm run typecheck`
-      is clean: `TriageWorkspace.tsx:82`, `server/digests.ts:48`,
-      `server/openaiDigest.ts:27`, `tests/utils/colors.test.ts`. None are from our
-      patches; the build (esbuild/vite) doesn't gate on them.
-- [ ] Check whether debba's `.github/workflows` CI runs on the fork and failing
-      noisily; disable/remove the inherited workflows if so (needs a
-      `workflow`-scoped token to push the change).
-- [ ] Hide or remove the **Notifications tab** — it always 403s without a
-      `notifications`-scoped token (fine-grained PATs can't use that API at all).
-- [ ] UI to **clear/rotate** the Anthropic key and re-onboard the GitHub token
-      (settings are currently set-only; clearing = wipe the `gitdeck-data` volume).
-
-## Features / polish
-- [ ] Surface the owned/non-owned/both **default** as a preference (deferred — the
-      live toggle already sits in the repos toolbar).
-- [ ] **Cache the last summary** per thread (in the data volume) so re-opening a
-      thread doesn't re-bill an Anthropic call on every Summarize click.
-- [ ] **"Load more"** for long timelines — `fetchThread` caps at 100 events;
-      "Open in GitHub" is the current escape hatch for very long threads.
+## Open
+- [ ] Check whether debba's inherited `.github/workflows` CI runs (and fails)
+      noisily on the fork; remove them if so — **needs a `workflow`-scoped token**
+      to push the change.
 - [ ] Broaden thread timeline coverage (more event types; inline review-comment
       threads), currently a curated set + top-level comments/reviews.
-
-## The big one
 - [ ] Progressive **hand rewrite** to de-AI-slop the upstream scaffolding (the fork
-      notice in README flags this as the long-term direction). Do it in slices, not
-      a big-bang; keep `upstream-mirror` as the diff baseline.
+      notice flags this). Do it in slices; keep `upstream-mirror` as the baseline.
 
-## New server / migration (cross-ref `../migration/TODO.md` in the home-server repo)
-- [ ] On the new platform, fold gitdeck into the **services-guest** stack behind
-      **Caddy** (and likely **Authentik**) instead of exposing raw `:8766`.
+## New server / migration (cross-ref `../migration/TODO.md`, blocked on K8 Plus hardware)
+- [ ] Fold gitdeck into the **services-guest** stack behind **Caddy** (+ likely
+      **Authentik**) instead of exposing raw `:8766`.
 - [ ] Move both secrets — the write-capable **GitHub token** and the **Anthropic
-      key** — out of `.env` / `settings.json` on the volume into the **SOPS/OpenBao**
-      pattern the rest of the stack uses.
+      key** — out of `.env` / `settings.json` into the **SOPS/OpenBao** pattern.
 
 ## Security posture note
-This is a **no-login LAN app** that holds a write-capable GitHub token + an
-Anthropic key and performs **public writes** (comments). Acceptable on the trusted
-LAN today; on the new platform it must sit behind Caddy/Authentik before any wider
-exposure.
+A no-login LAN app holding a write-capable GitHub token + an Anthropic key that
+performs public writes. Fine on the trusted LAN; gate behind Caddy/Authentik before
+any wider exposure.

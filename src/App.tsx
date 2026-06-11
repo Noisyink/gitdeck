@@ -26,7 +26,7 @@ import { Footer } from "./components/Footer";
 import { TopBar } from "./components/TopBar";
 import { SidebarControls, type InboxSidebarState } from "./components/SidebarControls";
 import { Pagination } from "./components/common/Pagination";
-import { BoardIcon, BookIcon, ExportIcon, InboxIcon, IssueIcon, PulseIcon } from "./components/common/Icons";
+import { BoardIcon, BookIcon, ExportIcon, IssueIcon, PulseIcon } from "./components/common/Icons";
 import { IssueList } from "./components/views/IssueList";
 import { PullRequestList } from "./components/views/PullRequestList";
 import { DailyDigestView } from "./components/views/DailyDigestView";
@@ -217,7 +217,12 @@ export function App() {
   const [prSort, setPrSort] = useState(() => cachedFiltersOnMount?.sorts?.prSort || "updated_desc");
   const [repoSort, setRepoSort] = useState(() => cachedFiltersOnMount?.sorts?.repoSort || "stars_desc");
   // Noisyink fork: owned / non-owned / both toggle for the Repos grid.
-  const [repoOwnership, setRepoOwnership] = useState<RepoOwnership>("both");
+  // Noisyink fork: persist the ownership toggle so your choice is the default.
+  const [repoOwnership, setRepoOwnership] = useState<RepoOwnership>(() => {
+    const saved = (typeof localStorage !== "undefined" && localStorage.getItem("gh-dash.repoOwnership")) as RepoOwnership | null;
+    return saved === "owned" || saved === "non-owned" || saved === "both" ? saved : "both";
+  });
+  useEffect(() => { localStorage.setItem("gh-dash.repoOwnership", repoOwnership); }, [repoOwnership]);
   // Page numbers are intentionally NOT cached — they're ephemeral positions,
   // not preferences. After a refresh, page 1 is always the correct start.
   const [issuePage, setIssuePage] = useState(1);
@@ -708,7 +713,9 @@ export function App() {
   }
 
   const tabs = [
-    { key: "inbox" as const, label: t("tabs.inbox"), count: issues.length + pullRequests.length, icon: <InboxIcon /> },
+    // Noisyink fork: Inbox tab hidden — it is notification-driven and the
+    // Notifications API 403s without a `notifications`-scoped token. The view code
+    // and /inbox route remain; only the nav button is removed.
     { key: "repos" as const, label: t("tabs.repositories"), count: repos.length, icon: <BookIcon /> },
     { key: "issues" as const, label: t("tabs.issues"), count: issues.length, icon: <IssueIcon /> },
     { key: "prs" as const, label: t("tabs.pullRequests"), count: pullRequests.length, icon: <PulseIcon /> },

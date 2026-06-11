@@ -549,15 +549,18 @@ export class GitHubProvider implements Provider {
         isPullRequest: Boolean(issue.pull_request),
       };
       const entries: ThreadEntry[] = [];
+      let truncated = false;
       const timelineRes = await fetch(`${base}/timeline?per_page=100`, { headers: htmlHeaders });
       if (timelineRes.ok) {
         const events = (await timelineRes.json()) as RawTimelineEvent[];
+        // One page only; a full page means GitHub has more (read the rest on GitHub).
+        truncated = events.length >= 100;
         for (const ev of events) {
           const entry = normalizeTimelineEvent(ev);
           if (entry) entries.push(entry);
         }
       }
-      return { ok: true, item, entries };
+      return { ok: true, item, entries, truncated };
     } catch (error) {
       return { ok: false, status: 500, error: (error as Error).message || String(error) };
     }

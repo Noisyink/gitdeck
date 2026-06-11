@@ -540,4 +540,5 @@ export interface ThreadData {
   ok: true;
   item: ThreadItem;
   entries: ThreadEntry[];
+  truncated?: boolean;
 }

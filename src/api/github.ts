@@ -191,7 +191,7 @@ export function fetchSettings(): Promise<{ ok: true; settings: GitdeckSettings }
   return readJson("/api/settings");
 }
 
-export function updateSettings(patch: Partial<{ anthropicApiKey: string; summaryModel: string; summaryEnabled: boolean; contribFilter: string }>): Promise<{ ok: true; settings: GitdeckSettings }> {
+export function updateSettings(patch: Partial<{ anthropicApiKey: string; summaryModel: string; summaryEnabled: boolean; contribFilter: string; clearAnthropicKey: boolean }>): Promise<{ ok: true; settings: GitdeckSettings }> {
   return readJson("/api/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -199,12 +199,12 @@ export function updateSettings(patch: Partial<{ anthropicApiKey: string; summary
   });
 }
 
-// Noisyink fork: Claude summary of a PR/issue thread.
-export function summarizeThread(repo: string, number: number, model?: string): Promise<{ ok: true; summary: string; model: string }> {
+// Noisyink fork: Claude summary of a PR/issue thread. `fresh` bypasses the cache.
+export function summarizeThread(repo: string, number: number, model?: string, fresh?: boolean): Promise<{ ok: true; summary: string; model: string; cached?: boolean }> {
   return readJson("/api/summary", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repo, number, ...(model ? { model } : {}) }),
+    body: JSON.stringify({ repo, number, ...(model ? { model } : {}), ...(fresh ? { fresh: true } : {}) }),
   });
 }
 
