@@ -11,6 +11,8 @@ export function ReplyBox({ repo, number, startOpen = false, onPosted }: { repo: 
   const { t } = useI18n();
   const [open, setOpen] = useState(startOpen);
   const [body, setBody] = useState("");
+  // F-05: snapshot the body when entering confirm so we post what was confirmed.
+  const [pendingBody, setPendingBody] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [postedUrl, setPostedUrl] = useState("");
@@ -28,7 +30,7 @@ export function ReplyBox({ repo, number, startOpen = false, onPosted }: { repo: 
     setStatus("posting");
     setError("");
     try {
-      const res = await postComment({ repo, number, body: body.trim() });
+      const res = await postComment({ repo, number, body: pendingBody });
       setPostedUrl(res.htmlUrl);
       setBody("");
       // In the thread view, clear and let the refreshed thread show the comment;
@@ -70,7 +72,7 @@ export function ReplyBox({ repo, number, startOpen = false, onPosted }: { repo: 
             placeholder={t("reply.placeholder")}
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            disabled={status === "posting"}
+            disabled={status === "posting" || status === "confirm"}
             rows={3}
           />
           {error ? <div className="reply-error">{error}</div> : null}
@@ -89,7 +91,7 @@ export function ReplyBox({ repo, number, startOpen = false, onPosted }: { repo: 
                 type="button"
                 className="reply-send"
                 disabled={!body.trim() || status === "posting"}
-                onClick={() => setStatus("confirm")}
+                onClick={() => { setPendingBody(body.trim()); setStatus("confirm"); }}
               >
                 {status === "posting" ? t("reply.posting") : t("reply.send")}
               </button>

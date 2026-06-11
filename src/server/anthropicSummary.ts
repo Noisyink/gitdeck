@@ -16,6 +16,16 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// F-01: extract only the structured Anthropic error message; never proxy the raw body.
+async function safeError(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as { error?: { message?: string }; message?: string };
+    return data.error?.message || data.message || `HTTP ${response.status}`;
+  } catch {
+    return `HTTP ${response.status}`;
+  }
+}
+
 function buildPrompt(thread: ThreadOk, repo: string, issueNumber: number): string {
   const kind = thread.item.isPullRequest ? "pull request" : "issue";
   const lines: string[] = [
@@ -56,16 +66,19 @@ export async function summariseThread(thread: ThreadOk, repo: string, issueNumbe
         system,
         messages: [{ role: "user", content: buildPrompt(thread, repo, issueNumber) }],
       }),
+      // F-02: native http has no per-request timeout; don't hold the handler open.
+      signal: AbortSignal.timeout(30_000),
     });
     if (!response.ok) {
-      const text = await response.text();
-      return { ok: false, status: response.status, error: text || `HTTP ${response.status}` };
+      // F-01: surface only the structured error message, never the raw body.
+      return { ok: false, status: response.status, error: await safeError(response) };
     }
     const data = (await response.json()) as { content?: Array<{ type?: string; text?: string }> };
     const summary = (data.content || []).filter((block) => block.type === "text" && block.text).map((block) => block.text).join("\n").trim();
     if (!summary) return { ok: false, status: 502, error: "empty summary from Anthropic" };
     return { ok: true, summary, model };
   } catch (error) {
+    if ((error as Error)?.name === "TimeoutError") return { ok: false, status: 408, error: "Anthropic request timed out" };
     return { ok: false, status: 500, error: (error as Error).message || String(error) };
   }
 }
