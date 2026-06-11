@@ -20,9 +20,10 @@ Personal-fork backlog for `Noisyink/gitdeck`. Running on the home server at `:87
       path). GitHub-token rotation is still via the existing add-token flow.
 
 ## Open
-- [ ] Check whether debba's inherited `.github/workflows` CI runs (and fails)
-      noisily on the fork; remove them if so — **needs a `workflow`-scoped token**
-      to push the change.
+- [x] Inherited CI: debba's one `dockerbuild.yml` workflow had run 0 times on the
+      fork (not failing). Disabled it via the Actions API (`disabled_manually`) with
+      the `repo` token — no `workflow` scope needed. The file stays in the tree
+      (deleting it would need a `workflow`-scoped token); disabled is sufficient.
 - [ ] Broaden thread timeline coverage (more event types; inline review-comment
       threads), currently a curated set + top-level comments/reviews.
 - [ ] Progressive **hand rewrite** to de-AI-slop the upstream scaffolding (the fork
