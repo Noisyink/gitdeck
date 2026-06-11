@@ -714,10 +714,12 @@ export function App() {
   }
 
   const tabs = [
+    // Noisyink fork: inbox first in the banner, but repos stays the default landing
+    // tab (tabFromPath falls back to "repos", not inbox).
+    { key: "inbox" as const, label: t("tabs.inbox"), count: inboxUnreadCount || inboxItems.length, icon: <PulseIcon /> },
     { key: "repos" as const, label: t("tabs.repositories"), count: repos.length, icon: <BookIcon /> },
     { key: "issues" as const, label: t("tabs.issues"), count: issues.length, icon: <IssueIcon /> },
     { key: "prs" as const, label: t("tabs.pullRequests"), count: pullRequests.length, icon: <PulseIcon /> },
-    { key: "inbox" as const, label: t("tabs.inbox"), count: inboxUnreadCount || inboxItems.length, icon: <PulseIcon /> },
     { key: "insights" as const, label: t("tabs.insights"), count: filteredInsights.length, icon: <PulseIcon /> },
     { key: "alerts" as const, label: t("tabs.alerts"), count: totalSecurityAlerts, icon: <PulseIcon /> },
     { key: "ci" as const, label: t("tabs.ci"), count: ciHealth.length, icon: <PulseIcon /> },
