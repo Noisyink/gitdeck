@@ -14,6 +14,7 @@ import {
 } from "./forgejoData";
 import type {
   Account,
+  CommentOutcome,
   DeviceFlowPoll,
   DeviceFlowStart,
   NotificationMutationOutcome,
@@ -118,6 +119,11 @@ export class ForgejoProvider implements Provider {
     const result = await markForgejoAllRead(account, options);
     if (result.ok) return { ok: true, status: result.status };
     return { ok: false, status: result.status, error: result.error, needsAuth: result.needsAuth };
+  }
+
+  // Noisyink fork: inline reply targets GitHub only; not wired for Forgejo here.
+  async createComment(_account: Account, _repo: string, _issueNumber: number, _body: string): Promise<CommentOutcome> {
+    return { ok: false, status: 501, error: "Posting comments is not implemented for Forgejo in this fork." };
   }
 
   avatarUrl(login: string, size = 64): string {

@@ -12,6 +12,7 @@ import type {
 } from "../../types/github";
 import type {
   Account,
+  CommentOutcome,
   DeviceFlowPoll,
   DeviceFlowStart,
   NotificationMutationOutcome,
@@ -393,6 +394,9 @@ export class GitHubProvider implements Provider {
       for (const raw of data.search.nodes) {
         if (raw.__typename !== "Issue") continue;
         const node = raw as IssueSearchNode;
+        // Noisyink fork: hide items on archived repos; those issues/PRs stay open
+        // forever and are not actionable.
+        if (node.repository?.isArchived) continue;
         collected.push({
           repository: node.repository,
           title: node.title,
@@ -422,6 +426,8 @@ export class GitHubProvider implements Provider {
       for (const raw of data.search.nodes) {
         if (raw.__typename !== "PullRequest") continue;
         const node = raw as PullRequestSearchNode;
+        // Noisyink fork: hide items on archived repos (see listIssues).
+        if (node.repository?.isArchived) continue;
         collected.push({
           repository: node.repository,
           title: node.title,
@@ -494,6 +500,27 @@ export class GitHubProvider implements Provider {
 
   async markNotificationRead(account: Account, threadId: string): Promise<NotificationMutationOutcome> {
     return this.notificationMutate(account, "PATCH", `/notifications/threads/${encodeURIComponent(threadId)}`);
+  }
+
+  // Noisyink fork: post a comment to an issue or PR (the issue-comments endpoint
+  // serves both). Powers the inline reply box; requires a write-capable token.
+  async createComment(account: Account, repo: string, issueNumber: number, body: string): Promise<CommentOutcome> {
+    try {
+      const response = await fetch(`${this.config.baseUrl}/repos/${repo}/issues/${issueNumber}/comments`, {
+        method: "POST",
+        headers: this.restHeaders(account, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ body }),
+      });
+      if (response.status === 401) return { ok: false, status: 401, error: "authentication required", needsAuth: true };
+      if (!response.ok) {
+        const text = await response.text();
+        return { ok: false, status: response.status, error: text || `HTTP ${response.status}` };
+      }
+      const data = (await response.json()) as { html_url?: string };
+      return { ok: true, htmlUrl: data.html_url ?? "" };
+    } catch (error) {
+      return { ok: false, status: 500, error: (error as Error).message || String(error) };
+    }
   }
 
   async markAllNotificationsRead(account: Account, options: { repo?: string | null; lastReadAt?: string | null }): Promise<NotificationMutationOutcome> {
@@ -598,7 +625,7 @@ query($q: String!, $cursor: String) {
       ... on Issue {
         number title url createdAt updatedAt
         author { login url }
-        repository { name nameWithOwner }
+        repository { name nameWithOwner isArchived }
         labels(first: 20) { nodes { name color description } }
         comments { totalCount }
         assignees(first: 10) { nodes { login url avatarUrl } }
@@ -618,7 +645,7 @@ query($q: String!, $cursor: String) {
         number title url createdAt updatedAt
         isDraft reviewDecision
         author { login url }
-        repository { name nameWithOwner }
+        repository { name nameWithOwner isArchived }
         labels(first: 20) { nodes { name color description } }
         comments { totalCount }
         reviews { totalCount }
@@ -638,7 +665,7 @@ interface IssueSearchNode {
   createdAt: string;
   updatedAt: string;
   author: { login: string; url: string } | null;
-  repository: { name: string; nameWithOwner: string };
+  repository: { name: string; nameWithOwner: string; isArchived?: boolean };
   labels: { nodes: GhLabel[] };
   comments: { totalCount: number };
   assignees: { nodes: GhUser[] };
@@ -661,7 +688,7 @@ interface PullRequestSearchNode {
   isDraft: boolean;
   reviewDecision: ReviewDecision;
   author: { login: string; url: string } | null;
-  repository: { name: string; nameWithOwner: string };
+  repository: { name: string; nameWithOwner: string; isArchived?: boolean };
   labels: { nodes: GhLabel[] };
   comments: { totalCount: number };
   reviews: { totalCount: number };

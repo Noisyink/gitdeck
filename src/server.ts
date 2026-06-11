@@ -1036,6 +1036,29 @@ async function handleNotificationRead(req: IncomingMessage, res: ServerResponse)
   sendJson(res, 200, { ok: true });
 }
 
+// Noisyink fork: post a comment to an issue or PR from the inline reply box.
+async function handleCreateComment(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
+  let parsed: { repo?: string; number?: number; body?: string };
+  try { parsed = (await readJsonBody(req)) as typeof parsed; }
+  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+  const repoPair = parseRepo(parsed.repo ?? null);
+  const number = Number(parsed.number);
+  const body = (parsed.body || "").trim();
+  if (!repoPair) return sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  if (!Number.isInteger(number) || number <= 0) return sendJson(res, 400, { ok: false, error: "missing or invalid number" });
+  if (!body) return sendJson(res, 400, { ok: false, error: "empty comment body" });
+  const account = await getActiveAccount();
+  if (!account) return sendJson(res, 401, { ok: false, error: "authentication required", needsAuth: true });
+  const provider = await getProviderForAccount(account);
+  const result = await provider.createComment(account, `${repoPair[0]}/${repoPair[1]}`, number, body);
+  if (!result.ok) {
+    const status = result.needsAuth ? 401 : result.status || 500;
+    return sendJson(res, status, { ok: false, error: result.error, needsAuth: result.needsAuth });
+  }
+  sendJson(res, 200, { ok: true, htmlUrl: result.htmlUrl });
+}
+
 async function handleNotificationsReadAll(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
   let parsed: { repo?: string; lastReadAt?: string };
@@ -1178,6 +1201,9 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (url.startsWith("/api/notifications")) {
     return handleNotifications(req, res, new URL(url, "http://localhost"));
+  }
+  if (url.startsWith("/api/comment")) {
+    return handleCreateComment(req, res);
   }
   const lastSlash = pathname.lastIndexOf("/");
   const fileName = lastSlash >= 0 ? pathname.slice(lastSlash + 1) : pathname;

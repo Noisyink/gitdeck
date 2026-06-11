@@ -114,6 +114,21 @@ export interface NotificationMutationError {
 
 export type NotificationMutationOutcome = NotificationMutationOk | NotificationMutationError;
 
+// Noisyink fork: result of posting a comment from the inline reply box.
+export interface CommentOk {
+  ok: true;
+  htmlUrl: string;
+}
+
+export interface CommentError {
+  ok: false;
+  status: number;
+  error: string;
+  needsAuth?: true;
+}
+
+export type CommentOutcome = CommentOk | CommentError;
+
 export interface Provider {
   readonly kind: ProviderKind;
   readonly config: ProviderConfig;
@@ -144,6 +159,9 @@ export interface Provider {
     account: Account,
     options: { repo?: string | null; lastReadAt?: string | null },
   ): Promise<NotificationMutationOutcome>;
+
+  // Noisyink fork: post a comment to an issue or PR.
+  createComment(account: Account, repo: string, issueNumber: number, body: string): Promise<CommentOutcome>;
 
   avatarUrl(login: string, size?: number): string;
   webUrlFor(kind: "user" | "repo" | "issue" | "pr", parts: Record<string, string | number>): string;

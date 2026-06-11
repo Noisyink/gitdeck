@@ -59,12 +59,15 @@ import {
   filterIssues,
   filterPullRequests,
   filterRepos,
+  filterReposByOwnership,
+  isOwnedRepo,
   sortIssues,
   sortPullRequests,
   sortRepos,
   type IssueFilters,
   type PullRequestFilters,
   type RepoFilters,
+  type RepoOwnership,
 } from "./utils/dashboard";
 import { clampPage } from "./utils/pagination";
 import { formatNumber } from "./utils/format";
@@ -213,6 +216,8 @@ export function App() {
   const [issueSort, setIssueSort] = useState(() => cachedFiltersOnMount?.sorts?.issueSort || "updated_desc");
   const [prSort, setPrSort] = useState(() => cachedFiltersOnMount?.sorts?.prSort || "updated_desc");
   const [repoSort, setRepoSort] = useState(() => cachedFiltersOnMount?.sorts?.repoSort || "stars_desc");
+  // Noisyink fork: owned / non-owned / both toggle for the Repos grid.
+  const [repoOwnership, setRepoOwnership] = useState<RepoOwnership>("both");
   // Page numbers are intentionally NOT cached — they're ephemeral positions,
   // not preferences. After a refresh, page 1 is always the correct start.
   const [issuePage, setIssuePage] = useState(1);
@@ -568,7 +573,7 @@ export function App() {
   const insightsByRepo = useMemo(() => new Map(repoInsights.map((insight) => [insight.repo, insight])), [repoInsights]);
   const filteredIssues = useMemo(() => sortIssues(filterIssues(issues, issueFilters, userLogin), issueSort), [issues, issueFilters, issueSort, userLogin]);
   const filteredPullRequests = useMemo(() => sortPullRequests(filterPullRequests(pullRequests, prFilters, userLogin), prSort), [pullRequests, prFilters, prSort, userLogin]);
-  const filteredRepos = useMemo(() => sortRepos(filterRepos(repos, issues, repoFilters), issues, repoSort, insightsByRepo), [repos, issues, repoFilters, repoSort, insightsByRepo]);
+  const filteredRepos = useMemo(() => sortRepos(filterReposByOwnership(filterRepos(repos, issues, repoFilters), owners, repoOwnership), issues, repoSort, insightsByRepo), [repos, issues, repoFilters, repoSort, insightsByRepo, owners, repoOwnership]);
   const filteredInsights = useMemo(
     () => filteredRepos
       .map((repo) => insightsByRepo.get(repo.nameWithOwner))
@@ -593,7 +598,17 @@ export function App() {
   const awaitingReviewCount = pullRequests.filter((pr) => !pr.isDraft && pr.reviewsCount === 0).length;
   const approvedCount = pullRequests.filter((pr) => pr.reviewDecision === "APPROVED").length;
   const stalePrCount = pullRequests.filter((pr) => Date.now() - new Date(pr.updatedAt).getTime() > 14 * 86_400_000).length;
-  const averageHealth = repoInsights.length ? Math.round(repoInsights.reduce((sum, insight) => sum + insight.healthScore, 0) / repoInsights.length) : 0;
+  // Noisyink fork: Average Health counts your own repos only (non-owned upstream
+  // health is not yours to act on). Stars/forks are split mine vs upstream across
+  // all tracked repos (independent of the grid toggle).
+  const ownedInsights = useMemo(() => repoInsights.filter((insight) => owners.includes(insight.repo.split("/")[0])), [repoInsights, owners]);
+  const averageHealth = ownedInsights.length ? Math.round(ownedInsights.reduce((sum, insight) => sum + insight.healthScore, 0) / ownedInsights.length) : 0;
+  const ownedRepos = useMemo(() => repos.filter((repo) => isOwnedRepo(repo, owners)), [repos, owners]);
+  const nonOwnedRepos = useMemo(() => repos.filter((repo) => !isOwnedRepo(repo, owners)), [repos, owners]);
+  const mineStars = ownedRepos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
+  const upstreamStars = nonOwnedRepos.reduce((sum, repo) => sum + repo.stargazerCount, 0);
+  const mineForks = ownedRepos.reduce((sum, repo) => sum + repo.forkCount, 0);
+  const upstreamForks = nonOwnedRepos.reduce((sum, repo) => sum + repo.forkCount, 0);
   const totalAlerts = repoInsights.reduce((sum, insight) => sum + insight.alerts.length, 0);
   const totalSecurityAlerts = repoInsights.reduce((sum, insight) => sum + insight.securityAlertsCount, 0);
   const securityRepoCount = repoInsights.filter((insight) => insight.securityAlertsCount > 0).length;
@@ -849,13 +864,25 @@ export function App() {
             <div className="view-repos" style={{ display: "block" }}>
               <section className="stats">
                 <div className="stat"><div className="k">{t("stats.repositories")}</div><div className="v">{formatNumber(filteredRepos.length)}</div><div className="sub">{t("stats.matchingFilters")}</div></div>
-                <div className="stat"><div className="k">{t("stats.totalStars")}</div><div className="v">{formatNumber(filteredRepos.reduce((sum, repo) => sum + repo.stargazerCount, 0))}</div><div className="sub">{t("stats.acrossShown")}</div></div>
-                <div className="stat"><div className="k">{t("stats.totalForks")}</div><div className="v">{formatNumber(filteredRepos.reduce((sum, repo) => sum + repo.forkCount, 0))}</div><div className="sub">{t("stats.acrossShown")}</div></div>
-                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(averageHealth)}</div><div className="sub">{t("stats.fromRepoSignals")}</div></div>
+                <div className="stat"><div className="k">{t("stats.totalStars")}</div><div className="v">{formatNumber(mineStars)}</div><div className="sub">{t("stats.yoursUpstream", { count: formatNumber(upstreamStars) })}</div></div>
+                <div className="stat"><div className="k">{t("stats.totalForks")}</div><div className="v">{formatNumber(mineForks)}</div><div className="sub">{t("stats.yoursUpstream", { count: formatNumber(upstreamForks) })}</div></div>
+                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(averageHealth)}</div><div className="sub">{t("stats.acrossYourRepos")}</div></div>
               </section>
               <div className="toolbar">
                 <span className="count-chip"><strong>{visibleRepos.length}</strong> {t("common.of")} <span>{filteredRepos.length}</span> {t("common.shown")}</span>
                 <div className="spacer" />
+                <div className="owner-toggle" role="group" aria-label={t("repos.ownership.label")}>
+                  {(["both", "owned", "non-owned"] as RepoOwnership[]).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className={`seg ${repoOwnership === opt ? "active" : ""}`}
+                      onClick={() => { setRepoOwnership(opt); setRepoPage(1); }}
+                    >
+                      {t(opt === "both" ? "repos.ownership.both" : opt === "owned" ? "repos.ownership.owned" : "repos.ownership.nonOwned")}
+                    </button>
+                  ))}
+                </div>
                 <label>{t("common.sort")}</label>
                 <select className="sort" value={repoSort} onChange={(event) => setRepoSort(event.target.value)}>
                   <option value="stars_desc">{t("sort.mostStars")}</option>
@@ -888,7 +915,7 @@ export function App() {
           {tab === "insights" ? (
             <div className="view-insights" style={{ display: "block" }}>
               <section className="stats">
-                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(averageHealth)}</div><div className="sub">{t("stats.acrossTrackedRepos")}</div></div>
+                <div className="stat"><div className="k">{t("stats.averageHealth")}</div><div className="v">{formatNumber(averageHealth)}</div><div className="sub">{t("stats.acrossYourRepos")}</div></div>
                 <div className="stat"><div className="k">{t("stats.alertCount")}</div><div className="v">{formatNumber(totalAlerts)}</div><div className="sub">{t("stats.activeRisksDetected")}</div></div>
                 <div className="stat"><div className="k">{t("stats.reposWithInsights")}</div><div className="v">{formatNumber(filteredInsights.length)}</div><div className="sub">{t("stats.alertsOpportunitiesCorrelations")}</div></div>
                 <div className="stat"><div className="k">{t("stats.atRiskRepos")}</div><div className="v">{formatNumber(repoInsights.filter((insight) => insight.healthLabel === "risky").length)}</div><div className="sub">{t("stats.healthScoreUnder55")}</div></div>

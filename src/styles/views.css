@@ -926,3 +926,31 @@
         "fail";
     }
   }
+
+  /* Noisyink fork: owned / non-owned / both toggle (repo toolbar). */
+  .owner-toggle { display: inline-flex; gap: 2px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 7px; padding: 2px; }
+  .owner-toggle .seg { background: transparent; border: 0; color: var(--muted); cursor: pointer; border-radius: 5px; padding: 4px 10px; font-size: 12px; }
+  .owner-toggle .seg:hover { color: var(--text); }
+  .owner-toggle .seg.active { background: var(--panel-3); color: var(--text); }
+
+  /* Noisyink fork: inline reply box on PR/Issue cards. */
+  .data-row-wrap { border-bottom: 1px solid var(--border-soft); }
+  .data-row-wrap:last-child { border-bottom: 0; }
+  .data-row-wrap > .data-row { border-bottom: 0; }
+  .reply-toggle { margin: 0 0 10px 48px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+  .reply-toggle:hover { background: var(--hover-surface); color: var(--text); }
+  .reply-box { margin: 0 16px 12px 48px; display: grid; gap: 8px; }
+  .reply-input { width: 100%; box-sizing: border-box; resize: vertical; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; font-family: inherit; line-height: 1.4; }
+  .reply-input:focus { outline: none; border-color: var(--accent); }
+  .reply-actions { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+  .reply-cancel, .reply-send { border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); }
+  .reply-cancel { background: transparent; color: var(--muted); }
+  .reply-cancel:hover { background: var(--hover-surface); color: var(--text); }
+  .reply-send { background: var(--accent); color: #08110f; border-color: transparent; font-weight: 600; }
+  .reply-send:disabled { opacity: .5; cursor: not-allowed; }
+  .reply-confirm { display: grid; gap: 8px; background: var(--panel-2); border: 1px solid var(--accent-border); border-radius: 6px; padding: 8px 10px; }
+  .reply-confirm-text { font-size: 12px; color: var(--text); }
+  .reply-error { font-size: 12px; color: var(--danger); }
+  .reply-done { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 0 16px 12px 48px; }
+  .reply-done a { color: var(--accent); }
+  .reply-link { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; }

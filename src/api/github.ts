@@ -163,6 +163,15 @@ export function addTokenAccount(payload: { providerConfigId: string; token: stri
   });
 }
 
+// Noisyink fork: post a comment to an issue or PR from the inline reply box.
+export function postComment(payload: { repo: string; number: number; body: string }): Promise<{ ok: true; htmlUrl: string }> {
+  return readJson("/api/comment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function fetchRepos(fresh = false, signal?: AbortSignal): Promise<ReposData> {
   return readJson<ReposData>(`/api/repos${fresh ? "?fresh=1" : ""}`, withSignal(signal), "/api/repos");
 }

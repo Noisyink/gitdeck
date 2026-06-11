@@ -39,6 +39,21 @@ export interface RepoFilters {
   includeArchived: boolean;
 }
 
+// Noisyink fork: a repo is "yours" when its owner is the authenticated user or
+// one of their orgs (the `owners` list). Used to split owned vs contributed
+// (non-owned upstream) repos in the grid toggle and the stats.
+export type RepoOwnership = "owned" | "non-owned" | "both";
+
+export function isOwnedRepo(repo: GhRepo, owners: string[]): boolean {
+  return owners.includes(getOwner(repo.nameWithOwner));
+}
+
+export function filterReposByOwnership(repos: GhRepo[], owners: string[], ownership: RepoOwnership): GhRepo[] {
+  if (ownership === "both") return repos;
+  const wantOwned = ownership === "owned";
+  return repos.filter((repo) => isOwnedRepo(repo, owners) === wantOwned);
+}
+
 export type FacetValue = number | { count: number; color?: string };
 
 export function issueCountForRepo(issues: GhIssue[], nameWithOwner: string): number {

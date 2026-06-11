@@ -4,6 +4,7 @@ import { formatNumber, formatRelativeTime } from "../../utils/format";
 import { getLabelCssVars } from "../../utils/colors";
 import { Avatar } from "../common/Avatar";
 import { PulseIcon } from "../common/Icons";
+import { ReplyBox } from "../common/ReplyBox";
 import { useI18n } from "../../i18n/I18nProvider";
 
 function reviewBadgeClass(pr: GhPullRequest): string {
@@ -24,7 +25,8 @@ export function PullRequestList({ pullRequests }: { pullRequests: GhPullRequest[
         const stale = Date.now() - new Date(pr.updatedAt).getTime() > 14 * 86_400_000;
         const author = pr.author?.login || "unknown";
         return (
-          <a className="data-row" href={pr.url} key={pr.url} target="_blank" rel="noreferrer">
+          <div className="data-row-wrap" key={pr.url}>
+            <a className="data-row" href={pr.url} target="_blank" rel="noreferrer">
             <Avatar login={pr.author?.login} size={36} />
             <div className="data-row-body">
               <div className="data-row-top">
@@ -66,7 +68,9 @@ export function PullRequestList({ pullRequests }: { pullRequests: GhPullRequest[
                 ) : null}
               </div>
             </div>
-          </a>
+            </a>
+            <ReplyBox repo={pr.repository.nameWithOwner} number={pr.number} />
+          </div>
         );
       })}
     </div>

@@ -4,7 +4,12 @@
 >
 > The upstream codebase was AI-scaffolded. This fork is being progressively rewritten by hand and will diverge substantially over time, so treat it as a personal work in progress, not a drop-in of upstream.
 >
-> **What already differs:** the Issues and Pull Requests views are scoped to the authenticated user's own contributions across every repository (`author:@me`), so the dashboard tracks your PRs and issues in public upstream repos you do not own, instead of only repositories you own. Override the qualifier with the `GH_DASH_FILTER` environment variable. The Repos grid likewise includes repositories you have contributed to but do not own (via `repositoriesContributedTo`), not just ones you own.
+> **What already differs from upstream:**
+> - Issues and Pull Requests are scoped to your own contributions across every repository (`author:@me`), so the dashboard tracks your PRs and issues in public upstream repos you do not own, not just repositories you own. Override the qualifier with the `GH_DASH_FILTER` environment variable.
+> - The Repos grid includes repositories you have contributed to but do not own (via `repositoriesContributedTo`), and has an owned / non-owned / both toggle.
+> - The Total Stars and Total Forks stats are split into yours vs upstream, and Average Health counts your own repos only.
+> - Issues and PRs on archived repositories are hidden (they stay open forever and are not actionable).
+> - Each PR and Issue card has an inline reply box that posts a comment to GitHub behind a confirm step, so you can respond without leaving the dashboard. This requires a write-capable token.
 >
 > Licensed MIT (see [`LICENSE`](LICENSE)); the original copyright notice is retained.
 

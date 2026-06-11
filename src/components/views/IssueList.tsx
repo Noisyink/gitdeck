@@ -3,6 +3,7 @@ import { formatRelativeTime } from "../../utils/format";
 import { getLabelCssVars } from "../../utils/colors";
 import { Avatar } from "../common/Avatar";
 import { IssueIcon } from "../common/Icons";
+import { ReplyBox } from "../common/ReplyBox";
 import { useI18n } from "../../i18n/I18nProvider";
 
 export function IssueList({ issues }: { issues: GhIssue[] }) {
@@ -17,7 +18,8 @@ export function IssueList({ issues }: { issues: GhIssue[] }) {
         const stale = Date.now() - new Date(issue.updatedAt).getTime() > 30 * 86_400_000;
         const author = issue.author?.login || "unknown";
         return (
-          <a className="data-row" href={issue.url} key={issue.url} target="_blank" rel="noreferrer">
+          <div className="data-row-wrap" key={issue.url}>
+            <a className="data-row" href={issue.url} target="_blank" rel="noreferrer">
             <Avatar login={issue.author?.login} size={36} />
             <div className="data-row-body">
               <div className="data-row-top">
@@ -56,7 +58,9 @@ export function IssueList({ issues }: { issues: GhIssue[] }) {
                 ) : null}
               </div>
             </div>
-          </a>
+            </a>
+            <ReplyBox repo={issue.repository.nameWithOwner} number={issue.number} />
+          </div>
         );
       })}
     </div>
