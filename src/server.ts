@@ -1205,11 +1205,15 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   send(res, 404, "not found", "text/plain; charset=utf-8");
 }
 
-createServer((req, res) => {
-  handle(req, res).catch((err) => {
-    send(res, 500, String(err), "text/plain; charset=utf-8");
+export { handle };
+
+if (!process.env.VITEST) {
+  createServer((req, res) => {
+    handle(req, res).catch((err) => {
+      send(res, 500, String(err), "text/plain; charset=utf-8");
+    });
+  }).listen(PORT, HOST, () => {
+    console.log(`GitHub Issues Dashboard -> http://${HOST}:${PORT}`);
+    console.log(`Auth mode: ${getAuthMode()}`);
   });
-}).listen(PORT, HOST, () => {
-  console.log(`GitHub Issues Dashboard -> http://${HOST}:${PORT}`);
-  console.log(`Auth mode: ${getAuthMode()}`);
-});
+}
