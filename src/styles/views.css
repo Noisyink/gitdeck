@@ -993,3 +993,20 @@
   .thread-event em { font-style: normal; margin-left: 4px; }
   .thread .reply-box { margin: 4px 0 0 0; }
   .thread .reply-toggle { margin: 4px 0 0 0; }
+
+  /* Noisyink fork: Claude summary card in the thread. */
+  .thread-summary { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-faint); }
+  .thread-summary-bar { display: flex; align-items: center; gap: 8px; }
+  .summary-btn { background: var(--accent); color: #08110f; border: 0; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .summary-btn:disabled { opacity: .6; cursor: not-allowed; }
+  .summary-model { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 3px 8px; font-size: 12px; }
+  .summary-text { font-size: 13px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
+  .summary-error { font-size: 12px; color: var(--danger); }
+
+  /* Noisyink fork: extra preference sections. */
+  .preferences-section { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .preferences-field-inline { flex-direction: row; align-items: center; justify-content: space-between; }
+  .preferences-key-row { display: flex; gap: 6px; }
+  .preferences-key-row input { flex: 1; min-width: 0; }
+  .preferences-key-row button { background: var(--accent); color: #08110f; border: 0; border-radius: 6px; padding: 0 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .preferences-key-row button:disabled { opacity: .5; cursor: not-allowed; }

@@ -10,6 +10,8 @@
 > - The Total Stars and Total Forks stats are split into yours vs upstream, and Average Health counts your own repos only.
 > - Issues and PRs on archived repositories are hidden (they stay open forever and are not actionable).
 > - Clicking a PR or Issue card expands an inline, GitHub-style thread (the body plus comments, reviews, and timeline events, rendered from GitHub's own `body_html`) instead of opening GitHub. "Open in GitHub" is a surface button next to Reply. The reply box posts a comment behind a confirm step and refreshes the thread. Reading is read-only; replying requires a write-capable token.
+> - Optional **Claude thread summaries**: a Summarize button on an expanded thread calls the Anthropic API (your key, set in Preferences) to summarize a PR/issue in a few sentences, defaulting to Haiku with a per-summary dropdown to elevate to Sonnet/Opus. Off until a key is entered. The key is stored server-side (`settings.json`, 0600) and billed per token against your Anthropic account, never a subscription.
+> - The Preferences menu gains a Claude section (API key, default model, enable) and a Repositories section (the `author:@me` vs `involves:@me` contribution filter, which the server reads live).
 >
 > Licensed MIT (see [`LICENSE`](LICENSE)); the original copyright notice is retained.
 

@@ -27,18 +27,17 @@ import type {
   ProviderConfig,
   ProviderIdentity,
 } from "./types";
+import { getContribFilter } from "../settingsStore";
 
 const execFileAsync = promisify(execFile);
 
 // Noisyink fork: the Issues/PRs tabs surface the *authenticated user's own*
 // contributions across ALL repos (including public upstreams you don't own),
 // instead of upstream's owner-scoped `user:<owner>` filter which only ever
-// shows repos you own. Lets you monitor your OSS PRs/issues, including quiet,
-// low-activity ones, that live in other people's repos (e.g. foundryvtt/pf2e).
-// Override the qualifier with GH_DASH_FILTER, e.g.
-//   "involves:@me"                     (authored, assigned, mentioned, commented)
-//   "author:@me review-requested:@me"  (your PRs + review requests)
-const CONTRIB_FILTER = process.env.GH_DASH_FILTER?.trim() || "author:@me";
+// shows repos you own. The qualifier comes from getContribFilter() (preferences
+// setting, then GH_DASH_FILTER env, then "author:@me") so it can be changed in
+// the UI without a restart. e.g. "involves:@me" (authored/assigned/mentioned/
+// commented) or "author:@me review-requested:@me" (your PRs + review requests).
 
 const CAPABILITIES: ProviderCapabilities = {
   graphql: true,
@@ -390,7 +389,7 @@ export class GitHubProvider implements Provider {
   }
 
   async listIssues(account: Account, owners: string[]): Promise<GhIssue[]> {
-    const q = `is:issue is:open ${CONTRIB_FILTER}`.trim();
+    const q = `is:issue is:open ${await getContribFilter()}`.trim();
     const collected: GhIssue[] = [];
     let cursor: string | null = null;
     for (let page = 0; page < 10; page++) {
@@ -422,7 +421,7 @@ export class GitHubProvider implements Provider {
   }
 
   async listPullRequests(account: Account, owners: string[]): Promise<GhPullRequest[]> {
-    const q = `is:pr is:open ${CONTRIB_FILTER}`.trim();
+    const q = `is:pr is:open ${await getContribFilter()}`.trim();
     const collected: GhPullRequest[] = [];
     let cursor: string | null = null;
     for (let page = 0; page < 10; page++) {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import appLogo from "../assets/app-logo-mark.svg";
 import { useI18n } from "../i18n/I18nProvider";
 import type { Language } from "../utils/i18n";
+import { fetchSettings, updateSettings, type GitdeckSettings } from "../api/github";
 import { AccountSwitcher } from "./AccountSwitcher";
 
 type Theme = "dark" | "light" | "auto";
@@ -43,6 +44,24 @@ export function TopBar({
   const { language, languages, setLanguage, t } = useI18n();
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const preferencesRef = useRef<HTMLDivElement | null>(null);
+  // Noisyink fork: server-side settings (Claude key/model/enable, contrib filter).
+  const [settings, setSettings] = useState<GitdeckSettings | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+
+  useEffect(() => {
+    if (!preferencesOpen || settings) return;
+    fetchSettings().then((res) => setSettings(res.settings)).catch(() => setSettings(null));
+  }, [preferencesOpen, settings]);
+
+  async function patchSettings(patch: Partial<{ anthropicApiKey: string; summaryModel: string; summaryEnabled: boolean; contribFilter: string }>) {
+    try {
+      const res = await updateSettings(patch);
+      setSettings(res.settings);
+      if (patch.anthropicApiKey) setApiKeyInput("");
+    } catch {
+      // best-effort; leave UI as-is
+    }
+  }
   // Orgs are all owners except the user's own login
   const orgs = owners.filter((o) => o !== authLogin);
 
@@ -137,6 +156,39 @@ export function TopBar({
                   ))}
                 </div>
               </div>
+              <div className="preferences-section">{t("preferences.claudeSection")}</div>
+              <label className="preferences-field">
+                <span>{t("preferences.claudeKey")}</span>
+                <span className="preferences-key-row">
+                  <input
+                    type="password"
+                    placeholder={settings?.anthropicConfigured ? t("preferences.claudeKeySet") : "sk-ant-..."}
+                    value={apiKeyInput}
+                    onChange={(event) => setApiKeyInput(event.target.value)}
+                  />
+                  <button type="button" disabled={!apiKeyInput.trim()} onClick={() => patchSettings({ anthropicApiKey: apiKeyInput.trim() })}>{t("preferences.save")}</button>
+                </span>
+              </label>
+              <label className="preferences-field">
+                <span>{t("preferences.claudeModel")}</span>
+                <select value={settings?.summaryModel ?? "claude-haiku-4-5"} onChange={(event) => patchSettings({ summaryModel: event.target.value })}>
+                  <option value="claude-haiku-4-5">Haiku</option>
+                  <option value="claude-sonnet-4-6">Sonnet</option>
+                  <option value="claude-opus-4-8">Opus</option>
+                </select>
+              </label>
+              <label className="preferences-field preferences-field-inline">
+                <span>{t("preferences.claudeEnabled")}</span>
+                <input type="checkbox" checked={Boolean(settings?.summaryEnabled)} onChange={(event) => patchSettings({ summaryEnabled: event.target.checked })} />
+              </label>
+              <div className="preferences-section">{t("preferences.reposSection")}</div>
+              <label className="preferences-field">
+                <span>{t("preferences.contribFilter")}</span>
+                <select value={(settings?.contribFilter || "author:@me")} onChange={(event) => patchSettings({ contribFilter: event.target.value })}>
+                  <option value="author:@me">{t("preferences.contribAuthored")}</option>
+                  <option value="involves:@me">{t("preferences.contribInvolved")}</option>
+                </select>
+              </label>
             </div>
           ) : null}
         </div>

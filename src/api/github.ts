@@ -179,6 +179,35 @@ export function fetchThread(repo: string, number: number, signal?: AbortSignal):
   return readJson<ThreadData>(`/api/thread?${query.toString()}`, withSignal(signal));
 }
 
+// Noisyink fork: server-side settings (Claude key/model/enable, contrib filter).
+export interface GitdeckSettings {
+  summaryModel: string;
+  summaryEnabled: boolean;
+  contribFilter: string;
+  anthropicConfigured: boolean;
+}
+
+export function fetchSettings(): Promise<{ ok: true; settings: GitdeckSettings }> {
+  return readJson("/api/settings");
+}
+
+export function updateSettings(patch: Partial<{ anthropicApiKey: string; summaryModel: string; summaryEnabled: boolean; contribFilter: string }>): Promise<{ ok: true; settings: GitdeckSettings }> {
+  return readJson("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
+// Noisyink fork: Claude summary of a PR/issue thread.
+export function summarizeThread(repo: string, number: number, model?: string): Promise<{ ok: true; summary: string; model: string }> {
+  return readJson("/api/summary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repo, number, ...(model ? { model } : {}) }),
+  });
+}
+
 export function fetchRepos(fresh = false, signal?: AbortSignal): Promise<ReposData> {
   return readJson<ReposData>(`/api/repos${fresh ? "?fresh=1" : ""}`, withSignal(signal), "/api/repos");
 }

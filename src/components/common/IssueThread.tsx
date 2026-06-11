@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ThreadData, ThreadEntry } from "../../types/github";
-import { fetchThread } from "../../api/github";
+import { fetchThread, fetchSettings, summarizeThread, type GitdeckSettings } from "../../api/github";
 import { formatRelativeTime } from "../../utils/format";
 import { Avatar } from "./Avatar";
 import { ReplyBox } from "./ReplyBox";
@@ -15,6 +15,31 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  // Noisyink fork: Claude summary state.
+  const [settings, setSettings] = useState<GitdeckSettings | null>(null);
+  const [summaryModel, setSummaryModel] = useState("claude-haiku-4-5");
+  const [summary, setSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+
+  useEffect(() => {
+    fetchSettings()
+      .then((res) => { setSettings(res.settings); setSummaryModel(res.settings.summaryModel); })
+      .catch(() => setSettings(null));
+  }, []);
+
+  async function runSummary(model: string) {
+    setSummarizing(true);
+    setSummaryError("");
+    try {
+      const res = await summarizeThread(repo, number, model);
+      setSummary(res.summary);
+    } catch (err) {
+      setSummaryError((err as Error).message || t("summary.error"));
+    } finally {
+      setSummarizing(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,6 +74,22 @@ export function IssueThread({ repo, number }: { repo: string; number: number }) 
 
   return (
     <div className="thread">
+      {settings?.summaryEnabled && settings?.anthropicConfigured ? (
+        <div className="thread-summary">
+          <div className="thread-summary-bar">
+            <button type="button" className="summary-btn" disabled={summarizing} onClick={() => runSummary(summaryModel)}>
+              {summarizing ? t("summary.busy") : summary ? t("summary.regenerate") : t("summary.button")}
+            </button>
+            <select className="summary-model" value={summaryModel} disabled={summarizing} onChange={(event) => setSummaryModel(event.target.value)}>
+              <option value="claude-haiku-4-5">Haiku</option>
+              <option value="claude-sonnet-4-6">Sonnet</option>
+              <option value="claude-opus-4-8">Opus</option>
+            </select>
+          </div>
+          {summaryError ? <div className="summary-error">{summaryError}</div> : null}
+          {summary ? <div className="summary-text">{summary}</div> : null}
+        </div>
+      ) : null}
       <article className="thread-comment">
         <Avatar login={data.item.author?.login} size={28} />
         <div className="thread-comment-body">

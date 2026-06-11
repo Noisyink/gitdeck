@@ -38,6 +38,8 @@ import {
   setActive as setActiveAccount,
 } from "./server/accountStore";
 import { getProvider, getProviderForAccount } from "./server/providers/registry";
+import { getPublicSettings, updateSettings } from "./server/settingsStore";
+import { summariseThread } from "./server/anthropicSummary";
 import { send, sendJson, sendJsonCacheable, sendStaticFile } from "./server/http";
 import {
   getNotificationsCached,
@@ -1076,6 +1078,47 @@ async function handleThread(req: IncomingMessage, res: ServerResponse, u: URL): 
   sendJson(res, 200, result);
 }
 
+// Noisyink fork: read/write user settings (Anthropic key, summary model/enable,
+// contrib filter). GET never returns the raw key.
+async function handleSettings(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method === "GET") {
+    return sendJson(res, 200, { ok: true, settings: await getPublicSettings() });
+  }
+  if (req.method === "PUT") {
+    let parsed: Record<string, unknown>;
+    try { parsed = (await readJsonBody(req)) as Record<string, unknown>; }
+    catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+    const updated = await updateSettings(parsed);
+    return sendJson(res, 200, { ok: true, settings: updated });
+  }
+  return sendJson(res, 405, { ok: false, error: "GET or PUT required" });
+}
+
+// Noisyink fork: summarise a PR/issue thread via the Anthropic API.
+async function handleSummary(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
+  let parsed: { repo?: string; number?: number; model?: string };
+  try { parsed = (await readJsonBody(req)) as typeof parsed; }
+  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
+  const repoPair = parseRepo(parsed.repo ?? null);
+  const number = Number(parsed.number);
+  if (!repoPair) return sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  if (!Number.isInteger(number) || number <= 0) return sendJson(res, 400, { ok: false, error: "missing or invalid number" });
+  const account = await getActiveAccount();
+  if (!account) return sendJson(res, 401, { ok: false, error: "authentication required", needsAuth: true });
+  const provider = await getProviderForAccount(account);
+  const thread = await provider.fetchThread(account, `${repoPair[0]}/${repoPair[1]}`, number);
+  if (!thread.ok) {
+    const status = thread.needsAuth ? 401 : thread.status || 500;
+    return sendJson(res, status, { ok: false, error: thread.error, needsAuth: thread.needsAuth });
+  }
+  const result = await summariseThread(thread, `${repoPair[0]}/${repoPair[1]}`, number, parsed.model);
+  if (!result.ok) {
+    return sendJson(res, result.status || 500, { ok: false, error: result.error, needsKey: result.needsKey });
+  }
+  sendJson(res, 200, { ok: true, summary: result.summary, model: result.model });
+}
+
 async function handleNotificationsReadAll(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
   let parsed: { repo?: string; lastReadAt?: string };
@@ -1224,6 +1267,12 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (url.startsWith("/api/thread")) {
     return handleThread(req, res, new URL(url, "http://localhost"));
+  }
+  if (url.startsWith("/api/settings")) {
+    return handleSettings(req, res);
+  }
+  if (url.startsWith("/api/summary")) {
+    return handleSummary(req, res);
   }
   const lastSlash = pathname.lastIndexOf("/");
   const fileName = lastSlash >= 0 ? pathname.slice(lastSlash + 1) : pathname;
