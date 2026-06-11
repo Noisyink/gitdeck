@@ -1,14 +1,12 @@
 # Gitdeck
 
-> The initial scaffolding of this repository was produced in an AI-assisted session with [Claude Code](https://claude.com/claude-code). From here on, code is reviewed and maintained by humans, and contributions are welcome.
-
-<p align="center">
-  <a href="https://discord.gg/YrZPHAwMSG"><img src="https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white&label=Discord" alt="Discord" /></a>
-</p>
-
-<p align="center">
-  <a href="https://repostars.dev/?repos=debba%2Fgh-dashboard&theme=dark"><img src="https://repostars.dev/api/embed?repo=debba%2Fgh-dashboard&theme=dark" alt="RepoStars" /></a>
-</p>
+> **Personal fork, not the upstream project.** This is an independent personal fork of [debba/gitdeck](https://github.com/debba/gitdeck) (originally `gh-dashboard`; MIT, Copyright (c) 2026 Andrea Debernardi). It is maintained by [@Noisyink](https://github.com/Noisyink) for personal use and is **not affiliated with, endorsed by, or supported by the upstream project or its maintainers.** Do not file issues about this fork upstream, and do not expect it to track upstream releases.
+>
+> The upstream codebase was AI-scaffolded. This fork is being progressively rewritten by hand and will diverge substantially over time, so treat it as a personal work in progress, not a drop-in of upstream.
+>
+> **What already differs:** the Issues and Pull Requests views are scoped to the authenticated user's own contributions across every repository (`author:@me`), so the dashboard tracks your PRs and issues in public upstream repos you do not own, instead of only repositories you own. Override the qualifier with the `GH_DASH_FILTER` environment variable.
+>
+> Licensed MIT (see [`LICENSE`](LICENSE)); the original copyright notice is retained.
 
 An open-source, local dashboard to explore repositories, issues, pull requests, traffic, and CI activity across multiple accounts on GitHub and Forgejo-compatible forges (Codeberg, self-hosted) — from a single interface.
 
@@ -263,15 +261,11 @@ Tests live under `tests/` and mirror the structure of `src/` (see [AGENTS.md](AG
 
 ## Status
 
-Early scaffolding. APIs, modules, and the UI are still being shaped — expect rapid changes. Star the repo and join Discord to follow along.
-
-## Community
-
-- [Discord server](https://discord.gg/YrZPHAwMSG) — suggest features, report issues, or just say hi.
+Personal fork, early and in flux. The original was AI-scaffolded; this fork is being reshaped by hand and re-scoped around tracking my own contributions across all repos. APIs, modules, and the UI will change without notice. No release cadence and no support.
 
 ## Contributing
 
-Before opening a PR, please skim [AGENTS.md](AGENTS.md) for the project conventions (English-only identifiers, pure logic in `src/utils/` with mirrored tests, no GitHub tokens on the browser, etc.) and run `npm test` + `npm run build`.
+This is a personal project and is not currently open to external contributions. You are welcome to fork it for your own use under the MIT license.
 
 ## License
 
