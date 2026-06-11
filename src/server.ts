@@ -42,12 +42,6 @@ import { getPublicSettings, isSummaryModel, updateSettings } from "./server/sett
 import { summariseThread } from "./server/anthropicSummary";
 import { getCachedSummary, setCachedSummary } from "./server/summaryCache";
 import { send, sendJson, sendJsonCacheable, sendStaticFile } from "./server/http";
-import {
-  getNotificationsCached,
-  invalidateNotificationsCache,
-  markAllRead,
-  markThreadRead,
-} from "./server/notifications";
 import { fetchRepoSecuritySummary } from "./server/securityAlerts";
 import { handleRepoInsights } from "./server/repoInsights";
 import { getCIHealthCached, invalidateCIHealthCache } from "./server/ciHealth";
@@ -850,7 +844,6 @@ async function handleAuthLogout(req: IncomingMessage, res: ServerResponse): Prom
   }
   await logout();
   invalidateDataCache();
-  invalidateNotificationsCache();
   invalidateCIHealthCache();
   sendJson(res, 200, { ok: true });
 }
@@ -916,7 +909,6 @@ async function handleAccountActivate(req: IncomingMessage, res: ServerResponse):
   const account = await setActiveAccount(id);
   if (!account) return sendJson(res, 404, { ok: false, error: "account not found" });
   invalidateDataCache();
-  invalidateNotificationsCache();
   invalidateCIHealthCache();
   sendJson(res, 200, { ok: true, activeId: account.id });
 }
@@ -969,7 +961,6 @@ async function handleAccountAddToken(req: IncomingMessage, res: ServerResponse):
     source: "token",
   });
   invalidateDataCache();
-  invalidateNotificationsCache();
   invalidateCIHealthCache();
   sendJson(res, 200, { ok: true, accountId: account.id });
 }
@@ -982,60 +973,7 @@ async function handleAccountRemove(req: IncomingMessage, res: ServerResponse, u:
   const existed = await removeAccountStore(id);
   if (!existed) return sendJson(res, 404, { ok: false, error: "account not found" });
   invalidateDataCache();
-  invalidateNotificationsCache();
   invalidateCIHealthCache();
-  sendJson(res, 200, { ok: true });
-}
-
-/* ===================== NOTIFICATIONS ===================== */
-
-async function handleNotifications(req: IncomingMessage, res: ServerResponse, u: URL): Promise<void> {
-  if (req.method && req.method !== "GET") {
-    return sendJson(res, 405, { ok: false, error: "GET required" });
-  }
-  const fresh = u.searchParams.get("fresh") === "1";
-  const result = await getNotificationsCached(fresh);
-  if (!result.ok) {
-    const status = result.needsAuth ? 401 : 500;
-    return sendJson(res, status, { ok: false, error: result.error, needsAuth: result.needsAuth });
-  }
-  const participating = u.searchParams.get("participating") === "1";
-  const onlyUnread = u.searchParams.get("unread") === "1";
-  const reasonFilter = (u.searchParams.get("reason") || "").trim();
-  let notifications = result.data.notifications;
-  if (participating) {
-    const participatingReasons = new Set([
-      "assign", "author", "comment", "manual", "mention", "review_requested", "team_mention",
-    ]);
-    notifications = notifications.filter((entry) => participatingReasons.has(entry.reason));
-  }
-  if (onlyUnread) notifications = notifications.filter((entry) => entry.unread);
-  if (reasonFilter) {
-    const allowed = new Set(reasonFilter.split(",").map((value) => value.trim()).filter(Boolean));
-    if (allowed.size) notifications = notifications.filter((entry) => allowed.has(entry.reason));
-  }
-  sendJsonCacheable(req, res, 200, {
-    ok: true,
-    notifications,
-    fetchedAt: result.data.fetchedAt,
-    pollInterval: result.data.pollInterval,
-  });
-}
-
-async function handleNotificationRead(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
-  let parsed: { threadId?: string };
-  try { parsed = (await readJsonBody(req)) as { threadId?: string }; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
-  const threadId = (parsed.threadId || "").trim();
-  if (!threadId || !/^\d+$/.test(threadId)) {
-    return sendJson(res, 400, { ok: false, error: "missing or invalid threadId" });
-  }
-  const result = await markThreadRead(threadId);
-  if (!result.ok) {
-    const status = result.needsAuth ? 401 : result.status || 500;
-    return sendJson(res, status, { ok: false, error: result.error, needsAuth: result.needsAuth });
-  }
   sendJson(res, 200, { ok: true });
 }
 
@@ -1133,31 +1071,11 @@ async function handleSummary(req: IncomingMessage, res: ServerResponse): Promise
   sendJson(res, 200, { ok: true, summary: result.summary, model: result.model, cached: false });
 }
 
-async function handleNotificationsReadAll(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
-  let parsed: { repo?: string; lastReadAt?: string };
-  try { parsed = (await readJsonBody(req)) as { repo?: string; lastReadAt?: string }; }
-  catch { return sendJson(res, 400, { ok: false, error: "invalid JSON" }); }
-  const repo = (parsed.repo || "").trim() || null;
-  if (repo && !parseRepo(repo)) return sendJson(res, 400, { ok: false, error: "invalid repo" });
-  const lastReadAt = parsed.lastReadAt ? String(parsed.lastReadAt) : null;
-  if (lastReadAt && Number.isNaN(Date.parse(lastReadAt))) {
-    return sendJson(res, 400, { ok: false, error: "invalid lastReadAt" });
-  }
-  const result = await markAllRead({ repo, lastReadAt });
-  if (!result.ok) {
-    const status = result.needsAuth ? 401 : result.status || 500;
-    return sendJson(res, status, { ok: false, error: result.error, needsAuth: result.needsAuth });
-  }
-  sendJson(res, 200, { ok: true });
-}
-
 /* ===================== ROUTING ===================== */
 
 const APP_ROUTES = new Set([
   "/",
   "/index.html",
-  "/inbox",
   "/repositories",
   "/issues",
   "/pull-requests",
@@ -1266,15 +1184,6 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     const status = payload.ok ? 200 : payload.needsAuth ? 401 : 500;
     sendJsonCacheable(req, res, status, payload);
     return;
-  }
-  if (url.startsWith("/api/notifications/read-all")) {
-    return handleNotificationsReadAll(req, res);
-  }
-  if (url.startsWith("/api/notifications/read")) {
-    return handleNotificationRead(req, res);
-  }
-  if (url.startsWith("/api/notifications")) {
-    return handleNotifications(req, res, new URL(url, "http://localhost"));
   }
   if (url.startsWith("/api/comment")) {
     return handleCreateComment(req, res);
