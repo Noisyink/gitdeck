@@ -1059,6 +1059,23 @@ async function handleCreateComment(req: IncomingMessage, res: ServerResponse): P
   sendJson(res, 200, { ok: true, htmlUrl: result.htmlUrl });
 }
 
+// Noisyink fork: issue/PR body + timeline for the inline thread view.
+async function handleThread(req: IncomingMessage, res: ServerResponse, u: URL): Promise<void> {
+  const repoPair = parseRepo(u.searchParams.get("repo"));
+  const number = Number(u.searchParams.get("number"));
+  if (!repoPair) return sendJson(res, 400, { ok: false, error: "missing or invalid repo" });
+  if (!Number.isInteger(number) || number <= 0) return sendJson(res, 400, { ok: false, error: "missing or invalid number" });
+  const account = await getActiveAccount();
+  if (!account) return sendJson(res, 401, { ok: false, error: "authentication required", needsAuth: true });
+  const provider = await getProviderForAccount(account);
+  const result = await provider.fetchThread(account, `${repoPair[0]}/${repoPair[1]}`, number);
+  if (!result.ok) {
+    const status = result.needsAuth ? 401 : result.status || 500;
+    return sendJson(res, status, { ok: false, error: result.error, needsAuth: result.needsAuth });
+  }
+  sendJson(res, 200, result);
+}
+
 async function handleNotificationsReadAll(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST required" });
   let parsed: { repo?: string; lastReadAt?: string };
@@ -1204,6 +1221,9 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   if (url.startsWith("/api/comment")) {
     return handleCreateComment(req, res);
+  }
+  if (url.startsWith("/api/thread")) {
+    return handleThread(req, res, new URL(url, "http://localhost"));
   }
   const lastSlash = pathname.lastIndexOf("/");
   const fileName = lastSlash >= 0 ? pathname.slice(lastSlash + 1) : pathname;

@@ -129,6 +129,32 @@ export interface CommentError {
 
 export type CommentOutcome = CommentOk | CommentError;
 
+// Noisyink fork: inline thread view (issue/PR body + timeline) for a card.
+export interface ThreadActor {
+  login: string;
+  avatarUrl: string;
+  url: string;
+}
+
+export interface ThreadItem {
+  author: ThreadActor | null;
+  title: string;
+  bodyHtml: string;
+  createdAt: string;
+  state: string;
+  url: string;
+  isPullRequest: boolean;
+}
+
+export type ThreadEntry =
+  | { kind: "comment"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; url: string }
+  | { kind: "review"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; state: string }
+  | { kind: "event"; actor: ThreadActor | null; createdAt: string; eventType: string; detail: string };
+
+export type ThreadData =
+  | { ok: true; item: ThreadItem; entries: ThreadEntry[] }
+  | { ok: false; status: number; error: string; needsAuth?: true };
+
 export interface Provider {
   readonly kind: ProviderKind;
   readonly config: ProviderConfig;
@@ -162,6 +188,9 @@ export interface Provider {
 
   // Noisyink fork: post a comment to an issue or PR.
   createComment(account: Account, repo: string, issueNumber: number, body: string): Promise<CommentOutcome>;
+
+  // Noisyink fork: fetch the issue/PR body + timeline for the inline thread view.
+  fetchThread(account: Account, repo: string, issueNumber: number): Promise<ThreadData>;
 
   avatarUrl(login: string, size?: number): string;
   webUrlFor(kind: "user" | "repo" | "issue" | "pr", parts: Record<string, string | number>): string;

@@ -954,3 +954,42 @@
   .reply-done { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 0 16px 12px 48px; }
   .reply-done a { color: var(--accent); }
   .reply-link { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; }
+
+  /* Noisyink fork: click-to-expand row + surface action buttons. */
+  .data-row.clickable { cursor: pointer; }
+  .data-row-wrap.expanded { background: var(--hover-surface); }
+  .row-actions { display: flex; align-items: center; gap: 8px; padding: 0 16px 10px 48px; }
+  .row-actions .reply-toggle { margin: 0; }
+  .row-open { display: inline-flex; align-items: center; gap: 4px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 10px; font-size: 12px; text-decoration: none; }
+  .row-open:hover { background: var(--hover-surface); color: var(--text); }
+
+  /* Noisyink fork: inline GitHub-style thread. */
+  .thread { margin: 0 16px 14px 48px; display: grid; gap: 10px; border-top: 1px solid var(--border-soft); padding-top: 12px; }
+  .thread-status { font-size: 13px; color: var(--muted); padding: 6px 0; }
+  .thread-status.error { color: var(--danger); }
+  .thread-comment { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .thread-comment-body { min-width: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .thread-comment.review .thread-comment-body { border-color: var(--accent-border); }
+  .thread-comment-head { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--panel-2); border-bottom: 1px solid var(--border-soft); font-size: 12px; }
+  .thread-comment-head strong { font-size: 13px; }
+  .thread-comment-head em { color: var(--muted); font-style: normal; margin-left: auto; }
+  .thread-review-state { text-transform: capitalize; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--panel-3); color: var(--muted); }
+  .thread-review-state.approved { background: var(--accent-soft); color: var(--accent); }
+  .thread-review-state.changes_requested { background: rgba(255, 99, 99, 0.16); color: var(--danger); }
+  .thread-body { padding: 10px 12px; font-size: 13px; line-height: 1.55; color: var(--text); overflow-wrap: anywhere; }
+  .thread-body.muted { color: var(--muted); }
+  .thread-body > :first-child { margin-top: 0; }
+  .thread-body > :last-child { margin-bottom: 0; }
+  .thread-body p { margin: 0 0 8px; }
+  .thread-body a { color: var(--accent); }
+  .thread-body img { max-width: 100%; height: auto; border-radius: 6px; }
+  .thread-body pre { background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+  .thread-body code { background: var(--panel-2); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  .thread-body pre code { background: transparent; padding: 0; }
+  .thread-body table { border-collapse: collapse; }
+  .thread-body th, .thread-body td { border: 1px solid var(--border-soft); padding: 4px 8px; }
+  .thread-event { font-size: 12px; color: var(--muted); padding-left: 4px; }
+  .thread-event-actor { color: var(--text); font-weight: 600; }
+  .thread-event em { font-style: normal; margin-left: 4px; }
+  .thread .reply-box { margin: 4px 0 0 0; }
+  .thread .reply-toggle { margin: 4px 0 0 0; }

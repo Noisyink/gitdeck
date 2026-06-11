@@ -18,6 +18,7 @@ import type {
   ReposData,
   RepoTrafficDetails,
   StargazerNode,
+  ThreadData,
 } from "../types/github";
 
 export class AuthRequiredClientError extends Error {
@@ -170,6 +171,12 @@ export function postComment(payload: { repo: string; number: number; body: strin
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+// Noisyink fork: fetch the issue/PR body + timeline for the inline thread view.
+export function fetchThread(repo: string, number: number, signal?: AbortSignal): Promise<ThreadData> {
+  const query = new URLSearchParams({ repo, number: String(number) });
+  return readJson<ThreadData>(`/api/thread?${query.toString()}`, withSignal(signal));
 }
 
 export function fetchRepos(fresh = false, signal?: AbortSignal): Promise<ReposData> {

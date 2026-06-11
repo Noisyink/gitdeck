@@ -9,7 +9,7 @@
 > - The Repos grid includes repositories you have contributed to but do not own (via `repositoriesContributedTo`), and has an owned / non-owned / both toggle.
 > - The Total Stars and Total Forks stats are split into yours vs upstream, and Average Health counts your own repos only.
 > - Issues and PRs on archived repositories are hidden (they stay open forever and are not actionable).
-> - Each PR and Issue card has an inline reply box that posts a comment to GitHub behind a confirm step, so you can respond without leaving the dashboard. This requires a write-capable token.
+> - Clicking a PR or Issue card expands an inline, GitHub-style thread (the body plus comments, reviews, and timeline events, rendered from GitHub's own `body_html`) instead of opening GitHub. "Open in GitHub" is a surface button next to Reply. The reply box posts a comment behind a confirm step and refreshes the thread. Reading is read-only; replying requires a write-capable token.
 >
 > Licensed MIT (see [`LICENSE`](LICENSE)); the original copyright notice is retained.
 

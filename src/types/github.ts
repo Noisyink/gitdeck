@@ -513,3 +513,31 @@ export interface ProjectDetails {
   totalCount: number;
   truncated: boolean;
 }
+
+// Noisyink fork: inline thread view (issue/PR body + timeline).
+export interface ThreadActor {
+  login: string;
+  avatarUrl: string;
+  url: string;
+}
+
+export interface ThreadItem {
+  author: ThreadActor | null;
+  title: string;
+  bodyHtml: string;
+  createdAt: string;
+  state: string;
+  url: string;
+  isPullRequest: boolean;
+}
+
+export type ThreadEntry =
+  | { kind: "comment"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; url: string }
+  | { kind: "review"; actor: ThreadActor | null; createdAt: string; bodyHtml: string; state: string }
+  | { kind: "event"; actor: ThreadActor | null; createdAt: string; eventType: string; detail: string };
+
+export interface ThreadData {
+  ok: true;
+  item: ThreadItem;
+  entries: ThreadEntry[];
+}

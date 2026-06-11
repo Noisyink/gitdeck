@@ -15,6 +15,10 @@ import type {
   CommentOutcome,
   DeviceFlowPoll,
   DeviceFlowStart,
+  ThreadActor,
+  ThreadData,
+  ThreadEntry,
+  ThreadItem,
   NotificationMutationOutcome,
   NotificationsFetchOutcome,
   OwnersOutcome,
@@ -523,6 +527,43 @@ export class GitHubProvider implements Provider {
     }
   }
 
+  // Noisyink fork: issue/PR body + timeline for the inline thread view. Two REST
+  // calls with the html media type so bodies come back pre-rendered as *_html.
+  async fetchThread(account: Account, repo: string, issueNumber: number): Promise<ThreadData> {
+    const htmlHeaders = this.restHeaders(account, { Accept: "application/vnd.github.html+json" });
+    const base = `${this.config.baseUrl}/repos/${repo}/issues/${issueNumber}`;
+    try {
+      const issueRes = await fetch(base, { headers: htmlHeaders });
+      if (issueRes.status === 401) return { ok: false, status: 401, error: "authentication required", needsAuth: true };
+      if (!issueRes.ok) {
+        const text = await issueRes.text();
+        return { ok: false, status: issueRes.status, error: text || `HTTP ${issueRes.status}` };
+      }
+      const issue = (await issueRes.json()) as RawThreadIssue;
+      const item: ThreadItem = {
+        author: toThreadActor(issue.user),
+        title: issue.title ?? "",
+        bodyHtml: issue.body_html ?? escapeHtml(issue.body ?? ""),
+        createdAt: issue.created_at ?? "",
+        state: issue.state ?? "",
+        url: issue.html_url ?? "",
+        isPullRequest: Boolean(issue.pull_request),
+      };
+      const entries: ThreadEntry[] = [];
+      const timelineRes = await fetch(`${base}/timeline?per_page=100`, { headers: htmlHeaders });
+      if (timelineRes.ok) {
+        const events = (await timelineRes.json()) as RawTimelineEvent[];
+        for (const ev of events) {
+          const entry = normalizeTimelineEvent(ev);
+          if (entry) entries.push(entry);
+        }
+      }
+      return { ok: true, item, entries };
+    } catch (error) {
+      return { ok: false, status: 500, error: (error as Error).message || String(error) };
+    }
+  }
+
   async markAllNotificationsRead(account: Account, options: { repo?: string | null; lastReadAt?: string | null }): Promise<NotificationMutationOutcome> {
     const lastReadAt = options.lastReadAt ?? new Date().toISOString();
     const path = options.repo ? `/repos/${options.repo}/notifications` : "/notifications";
@@ -750,6 +791,78 @@ interface RawGitHubNotification {
   last_read_at: string | null;
   subject: { title: string; url: string | null; latest_comment_url: string | null; type: string };
   repository: { name: string; full_name: string; private: boolean; html_url: string };
+}
+
+// Noisyink fork: helpers for fetchThread (inline thread view).
+interface RawThreadUser { login?: string; avatar_url?: string; html_url?: string }
+interface RawThreadIssue {
+  user?: RawThreadUser | null;
+  title?: string;
+  body_html?: string;
+  body?: string;
+  created_at?: string;
+  state?: string;
+  html_url?: string;
+  pull_request?: unknown;
+}
+interface RawTimelineEvent {
+  event?: string;
+  user?: RawThreadUser | null;
+  actor?: RawThreadUser | null;
+  created_at?: string;
+  submitted_at?: string;
+  body_html?: string;
+  body?: string;
+  html_url?: string;
+  state?: string;
+  label?: { name?: string };
+  rename?: { from?: string; to?: string };
+  assignee?: RawThreadUser | null;
+  requested_reviewer?: RawThreadUser | null;
+  requested_team?: { name?: string };
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function toThreadActor(user: RawThreadUser | null | undefined): ThreadActor | null {
+  if (!user?.login) return null;
+  return { login: user.login, avatarUrl: user.avatar_url ?? "", url: user.html_url ?? "" };
+}
+
+const TIMELINE_EVENT_DETAIL: Record<string, (event: RawTimelineEvent) => string> = {
+  labeled: (event) => event.label?.name ?? "",
+  unlabeled: (event) => event.label?.name ?? "",
+  closed: () => "",
+  reopened: () => "",
+  merged: () => "",
+  renamed: (event) => event.rename?.to ?? "",
+  assigned: (event) => event.assignee?.login ?? "",
+  unassigned: (event) => event.assignee?.login ?? "",
+  review_requested: (event) => event.requested_reviewer?.login ?? event.requested_team?.name ?? "",
+  review_request_removed: (event) => event.requested_reviewer?.login ?? "",
+};
+
+function normalizeTimelineEvent(event: RawTimelineEvent): ThreadEntry | null {
+  const type = event.event ?? "";
+  const actor = toThreadActor(event.user ?? event.actor);
+  const createdAt = event.created_at ?? event.submitted_at ?? "";
+  if (type === "commented") {
+    return { kind: "comment", actor, createdAt, bodyHtml: event.body_html ?? escapeHtml(event.body ?? ""), url: event.html_url ?? "" };
+  }
+  if (type === "reviewed") {
+    const state = event.state ?? "";
+    const bodyHtml = event.body_html ?? escapeHtml(event.body ?? "");
+    // Drop empty "commented" reviews (just inline-comment containers with no summary).
+    if (!bodyHtml && state === "commented") return null;
+    return { kind: "review", actor, createdAt, bodyHtml, state };
+  }
+  const detail = TIMELINE_EVENT_DETAIL[type];
+  if (detail) {
+    return { kind: "event", actor, createdAt, eventType: type, detail: detail(event) };
+  }
+  return null;
 }
 
 function parseNextLink(header: string | null): string | null {

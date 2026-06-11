@@ -7,9 +7,9 @@ import { useI18n } from "../../i18n/I18nProvider";
 // card itself is an anchor, so this renders as a sibling outside it.
 type Status = "idle" | "confirm" | "posting" | "done" | "error";
 
-export function ReplyBox({ repo, number }: { repo: string; number: number }) {
+export function ReplyBox({ repo, number, startOpen = false, onPosted }: { repo: string; number: number; startOpen?: boolean; onPosted?: () => void }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -18,7 +18,7 @@ export function ReplyBox({ repo, number }: { repo: string; number: number }) {
   const target = `${repo} #${number}`;
 
   function close() {
-    setOpen(false);
+    setOpen(startOpen);
     setBody("");
     setError("");
     setStatus("idle");
@@ -30,7 +30,15 @@ export function ReplyBox({ repo, number }: { repo: string; number: number }) {
     try {
       const res = await postComment({ repo, number, body: body.trim() });
       setPostedUrl(res.htmlUrl);
-      setStatus("done");
+      setBody("");
+      // In the thread view, clear and let the refreshed thread show the comment;
+      // standalone, show a confirmation with a link.
+      if (onPosted) {
+        setStatus("idle");
+        onPosted();
+      } else {
+        setStatus("done");
+      }
     } catch (err) {
       setError((err as Error).message || t("reply.error"));
       setStatus("error");

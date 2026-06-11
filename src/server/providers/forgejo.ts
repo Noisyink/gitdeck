@@ -17,6 +17,7 @@ import type {
   CommentOutcome,
   DeviceFlowPoll,
   DeviceFlowStart,
+  ThreadData,
   NotificationMutationOutcome,
   NotificationsFetchOutcome,
   OwnersOutcome,
@@ -124,6 +125,11 @@ export class ForgejoProvider implements Provider {
   // Noisyink fork: inline reply targets GitHub only; not wired for Forgejo here.
   async createComment(_account: Account, _repo: string, _issueNumber: number, _body: string): Promise<CommentOutcome> {
     return { ok: false, status: 501, error: "Posting comments is not implemented for Forgejo in this fork." };
+  }
+
+  // Noisyink fork: inline thread view targets GitHub only; not wired for Forgejo.
+  async fetchThread(_account: Account, _repo: string, _issueNumber: number): Promise<ThreadData> {
+    return { ok: false, status: 501, error: "Thread view is not implemented for Forgejo in this fork." };
   }
 
   avatarUrl(login: string, size = 64): string {

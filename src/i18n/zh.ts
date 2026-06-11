@@ -1,6 +1,8 @@
 import type { en } from "./en";
 
-export const zh: Record<keyof typeof en, string> = {
+// Noisyink fork: Partial so non-English locales need not carry every key; the
+// translate() helper falls back to English for any missing key.
+export const zh: Partial<Record<keyof typeof en, string>> = {
   "app.title": "Gitdeck",
   "language.label": "语言",
   "language.en": "English",
