@@ -1,25 +1,15 @@
 import { getProviderConfig } from "../accountStore";
-import { ForgejoProvider } from "./forgejo";
 import { GitHubProvider } from "./github";
-import type { Account, Provider, ProviderConfig } from "./types";
+import type { Account, Provider } from "./types";
 
 const cache = new Map<string, Provider>();
-
-function build(config: ProviderConfig): Provider {
-  switch (config.kind) {
-    case "github":
-      return new GitHubProvider(config);
-    case "forgejo":
-      return new ForgejoProvider(config);
-  }
-}
 
 export async function getProvider(providerConfigId: string): Promise<Provider> {
   const cached = cache.get(providerConfigId);
   if (cached) return cached;
   const config = await getProviderConfig(providerConfigId);
   if (!config) throw new Error(`Unknown provider config: ${providerConfigId}`);
-  const provider = build(config);
+  const provider = new GitHubProvider(config);
   cache.set(providerConfigId, provider);
   return provider;
 }

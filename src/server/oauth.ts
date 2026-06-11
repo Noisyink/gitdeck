@@ -56,7 +56,7 @@ function buildAccount(
   webHost: string,
 ): Account {
   const safeLogin = (login || "user").replace(/[^a-zA-Z0-9_-]/g, "_");
-  const prefix = kind === "github" ? "gh" : kind === "forgejo" ? "fj" : kind;
+  const prefix = "gh";
   return {
     id: `${prefix}_${safeLogin}_${providerConfigId}`,
     providerKind: kind,

@@ -1,4 +1,4 @@
-export type ProviderKind = "github" | "forgejo";
+export type ProviderKind = "github";
 
 export type AccountSource = "device" | "gh-cli" | "token" | "env";
 
@@ -84,36 +84,6 @@ export interface OwnersError {
 
 export type OwnersOutcome = OwnersResult | OwnersError;
 
-export interface NotificationsFetchOk {
-  ok: true;
-  refreshed: boolean;
-  notifications: import("../../types/github").GhNotification[];
-  pollInterval: number;
-  lastModified: string | null;
-}
-
-export interface NotificationsFetchError {
-  ok: false;
-  error: string;
-  needsAuth?: true;
-}
-
-export type NotificationsFetchOutcome = NotificationsFetchOk | NotificationsFetchError;
-
-export interface NotificationMutationOk {
-  ok: true;
-  status: number;
-}
-
-export interface NotificationMutationError {
-  ok: false;
-  status: number;
-  error: string;
-  needsAuth?: true;
-}
-
-export type NotificationMutationOutcome = NotificationMutationOk | NotificationMutationError;
-
 // Noisyink fork: result of posting a comment from the inline reply box.
 export interface CommentOk {
   ok: true;
@@ -179,13 +149,6 @@ export interface Provider {
     account: Account,
     owners: string[],
   ): Promise<import("../../types/github").GhPullRequest[]>;
-
-  fetchNotifications(account: Account, ifModifiedSince: string | null): Promise<NotificationsFetchOutcome>;
-  markNotificationRead(account: Account, threadId: string): Promise<NotificationMutationOutcome>;
-  markAllNotificationsRead(
-    account: Account,
-    options: { repo?: string | null; lastReadAt?: string | null },
-  ): Promise<NotificationMutationOutcome>;
 
   // Noisyink fork: post a comment to an issue or PR.
   createComment(account: Account, repo: string, issueNumber: number, body: string): Promise<CommentOutcome>;

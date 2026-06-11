@@ -3,8 +3,6 @@ import { promisify } from "node:util";
 import type {
   GhIssue,
   GhLabel,
-  GhNotification,
-  GhNotificationReason,
   GhPullRequest,
   GhRepo,
   GhUser,
@@ -19,8 +17,6 @@ import type {
   ThreadData,
   ThreadEntry,
   ThreadItem,
-  NotificationMutationOutcome,
-  NotificationsFetchOutcome,
   OwnersOutcome,
   Provider,
   ProviderCapabilities,
@@ -459,52 +455,6 @@ export class GitHubProvider implements Provider {
     return collected;
   }
 
-  async fetchNotifications(account: Account, ifModifiedSince: string | null): Promise<NotificationsFetchOutcome> {
-    const initial = `${this.config.baseUrl}/notifications?all=true&participating=false&per_page=50`;
-    const collected: GhNotification[] = [];
-    let url: string | null = initial;
-    let firstLastModified: string | null = null;
-    let firstPollInterval = 60;
-    let firstStatus = 0;
-    let pages = 0;
-    while (url && pages < 5) {
-      const headers = this.restHeaders(account, pages === 0 && ifModifiedSince ? { "If-Modified-Since": ifModifiedSince } : undefined);
-      const response = await fetch(url, { headers });
-      if (response.status === 401) return { ok: false, error: "authentication required", needsAuth: true };
-      const lastModified = response.headers.get("last-modified");
-      const intervalHeader = response.headers.get("x-poll-interval");
-      const pollInterval = intervalHeader ? Math.max(1, Number(intervalHeader)) : 60;
-      if (pages === 0) {
-        firstLastModified = lastModified;
-        firstPollInterval = pollInterval;
-        firstStatus = response.status;
-        if (response.status === 304) {
-          return { ok: true, refreshed: false, notifications: [], lastModified: firstLastModified, pollInterval: firstPollInterval };
-        }
-      }
-      if (!response.ok) {
-        const text = await response.text();
-        return { ok: false, error: text || `HTTP ${response.status}` };
-      }
-      const raw = (await response.json()) as RawGitHubNotification[];
-      for (const entry of raw) collected.push(normalizeGitHubNotification(entry));
-      const link = response.headers.get("link");
-      url = parseNextLink(link);
-      pages += 1;
-    }
-    return {
-      ok: true,
-      refreshed: firstStatus !== 304,
-      notifications: collected,
-      lastModified: firstLastModified,
-      pollInterval: firstPollInterval,
-    };
-  }
-
-  async markNotificationRead(account: Account, threadId: string): Promise<NotificationMutationOutcome> {
-    return this.notificationMutate(account, "PATCH", `/notifications/threads/${encodeURIComponent(threadId)}`);
-  }
-
   // Noisyink fork: post a comment to an issue or PR (the issue-comments endpoint
   // serves both). Powers the inline reply box; requires a write-capable token.
   async createComment(account: Account, repo: string, issueNumber: number, body: string): Promise<CommentOutcome> {
@@ -578,30 +528,6 @@ export class GitHubProvider implements Provider {
       }
       entries.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
       return { ok: true, item, entries, truncated };
-    } catch (error) {
-      return { ok: false, status: 500, error: (error as Error).message || String(error) };
-    }
-  }
-
-  async markAllNotificationsRead(account: Account, options: { repo?: string | null; lastReadAt?: string | null }): Promise<NotificationMutationOutcome> {
-    const lastReadAt = options.lastReadAt ?? new Date().toISOString();
-    const path = options.repo ? `/repos/${options.repo}/notifications` : "/notifications";
-    return this.notificationMutate(account, "PUT", path, { last_read_at: lastReadAt, read: true });
-  }
-
-  private async notificationMutate(account: Account, method: "PATCH" | "PUT", path: string, body?: unknown): Promise<NotificationMutationOutcome> {
-    try {
-      const response = await fetch(`${this.config.baseUrl}${path}`, {
-        method,
-        headers: this.restHeaders(account, body ? { "Content-Type": "application/json" } : undefined),
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (response.status === 401) return { ok: false, status: 401, error: "authentication required", needsAuth: true };
-      if (!response.ok && response.status !== 205) {
-        const text = await response.text();
-        return { ok: false, status: response.status, error: text || `HTTP ${response.status}` };
-      }
-      return { ok: true, status: response.status };
     } catch (error) {
       return { ok: false, status: 500, error: (error as Error).message || String(error) };
     }
@@ -802,16 +728,6 @@ interface ReposContributedResponse {
   } | null;
 }
 
-interface RawGitHubNotification {
-  id: string;
-  unread: boolean;
-  reason: string;
-  updated_at: string;
-  last_read_at: string | null;
-  subject: { title: string; url: string | null; latest_comment_url: string | null; type: string };
-  repository: { name: string; full_name: string; private: boolean; html_url: string };
-}
-
 // Noisyink fork: helpers for fetchThread (inline thread view).
 interface RawThreadUser { login?: string; avatar_url?: string; html_url?: string }
 interface RawThreadIssue {
@@ -916,40 +832,3 @@ function parseNextLink(header: string | null): string | null {
   return null;
 }
 
-const SUBJECT_NUMBER_PATTERN = /\/(?:issues|pulls)\/(\d+)$/;
-
-function normalizeGitHubNotification(raw: RawGitHubNotification): GhNotification {
-  const itemNumber = (() => {
-    if (!raw.subject?.url) return null;
-    const match = SUBJECT_NUMBER_PATTERN.exec(raw.subject.url);
-    return match ? Number(match[1]) : null;
-  })();
-  const repoHtml = raw.repository?.html_url ?? "";
-  const subjectType = raw.subject?.type ?? "";
-  let itemHtmlUrl: string | null = null;
-  if (itemNumber && raw.subject?.url) {
-    if (subjectType === "PullRequest") itemHtmlUrl = `${repoHtml}/pull/${itemNumber}`;
-    else if (subjectType === "Issue") itemHtmlUrl = `${repoHtml}/issues/${itemNumber}`;
-  }
-  return {
-    id: raw.id,
-    unread: Boolean(raw.unread),
-    reason: raw.reason as GhNotificationReason,
-    updatedAt: raw.updated_at,
-    lastReadAt: raw.last_read_at,
-    subject: {
-      title: raw.subject?.title ?? "",
-      url: raw.subject?.url ?? null,
-      latestCommentUrl: raw.subject?.latest_comment_url ?? null,
-      type: subjectType,
-    },
-    repository: {
-      name: raw.repository?.name ?? "",
-      nameWithOwner: raw.repository?.full_name ?? "",
-      private: Boolean(raw.repository?.private),
-      htmlUrl: repoHtml,
-    },
-    itemNumber,
-    itemHtmlUrl,
-  };
-}

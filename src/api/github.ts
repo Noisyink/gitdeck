@@ -100,7 +100,7 @@ export function logoutAuth(): Promise<{ ok: true }> {
 
 export interface AccountSummary {
   id: string;
-  providerKind: "github" | "forgejo";
+  providerKind: "github";
   providerConfigId: string;
   label: string;
   login: string | null;
@@ -145,7 +145,7 @@ export function removeAccount(id: string): Promise<{ ok: true }> {
 
 export interface ProviderConfigSummary {
   id: string;
-  kind: "github" | "forgejo";
+  kind: "github";
   label: string;
   webUrl: string;
   supportsDeviceFlow: boolean;

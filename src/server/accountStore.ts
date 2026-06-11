@@ -22,17 +22,6 @@ const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     oauthScopes: "repo read:org project read:user user:email",
     userAgent: "gitdeck",
   },
-  "codeberg.org": {
-    id: "codeberg.org",
-    kind: "forgejo",
-    label: "Codeberg",
-    baseUrl: "https://codeberg.org/api/v1",
-    webUrl: "https://codeberg.org",
-    oauthAuthorizeUrl: "https://codeberg.org/login/oauth/authorize",
-    oauthTokenUrl: "https://codeberg.org/login/oauth/access_token",
-    oauthScopes: "read:repository read:notification read:user",
-    userAgent: "gitdeck",
-  },
 };
 
 interface InternalState {

@@ -90,7 +90,6 @@ describe("accountStore", () => {
     expect(data.activeId).toBe("gh_debba");
     expect(data.accounts).toHaveLength(1);
     expect(data.providerConfigs["github.com"]).toBeDefined();
-    expect(data.providerConfigs["codeberg.org"]).toBeDefined();
   });
 
   it("is idempotent across re-initializations", async () => {

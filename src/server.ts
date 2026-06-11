@@ -947,7 +947,7 @@ async function handleAccountAddToken(req: IncomingMessage, res: ServerResponse):
   }
   if (!identity.login) return sendJson(res, 400, { ok: false, error: "provider did not return a login" });
   const safeLogin = identity.login.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const prefix = config.kind === "github" ? "gh" : "fj";
+  const prefix = "gh";
   const webHost = new URL(config.webUrl).host;
   const account = await addAccount({
     id: `${prefix}_${safeLogin}_${providerConfigId}`,
